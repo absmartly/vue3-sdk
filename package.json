@@ -1,0 +1,65 @@
+{
+	"name": "@absmartly/vue2-sdk",
+	"version": "2.0.0",
+	"homepage": "https://github.com/absmartly/vue2-sdk#README.md",
+	"bugs": "https://github.com/absmartly/vue2-sdk/issues",
+	"keywords": [
+		"absmartly",
+		"ab-smartly",
+		"a/b-smartly",
+		"ab-testing",
+		"a/b-testing",
+		"split-testing",
+		"ab",
+		"a/b",
+		"cro",
+		"vue",
+		"vue2"
+	],
+	"license": "Apache-2.0",
+	"main": "dist/absmartly.common.js",
+	"browser": "dist/absmartly.umd.js",
+	"unpkg": "dist/absmartly.umd.min.js",
+	"scripts": {
+		"build": "npm run -s format && vue-cli-service lint && vue-cli-service build --progress --target lib --name absmartly src/index.js && rm ./dist/demo.html",
+		"prepack": "npm -s upgrade && npm run -s build",
+		"test": "vue-cli-service test:unit --coverage",
+		"lint": "vue-cli-service lint",
+		"format": "prettier --write '**/*.{js,mjs,jsx,json,vue}'"
+	},
+	"dependencies": {
+		"@absmartly/javascript-sdk": "^1.11.4"
+	},
+	"peerDependencies": {
+		"vue": "^3.3.0"
+	},
+	"devDependencies": {
+		"@babel/eslint-parser": "^7.22.5",
+		"@vue/cli-plugin-babel": "^5.0.8",
+		"@vue/cli-plugin-unit-jest": "^5.0.8",
+		"@vue/cli-service": "^5.0.8",
+		"@vue/test-utils": "^2.4.0",
+		"@vue/vue3-jest": "^27.0.0",
+		"eslint": "^8.43.0",
+		"eslint-config-prettier": "^8.8.0",
+		"eslint-plugin-prettier": "^4.2.1",
+		"eslint-plugin-vue": "^9.15.1",
+		"prettier": "^2.8.8",
+		"vue-template-compiler": "^2.7.14"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"files": [
+		"README.md",
+		"CONTRIBUTING.md",
+		"LICENSE",
+		"package.json",
+		"dist"
+	],
+	"eslintConfig": {
+		"env": {
+			"vue/setup-compiler-macros": true
+		}
+	}
+}
