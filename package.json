@@ -1,8 +1,8 @@
 {
-	"name": "@absmartly/vue2-sdk",
-	"version": "2.0.0",
-	"homepage": "https://github.com/absmartly/vue2-sdk#README.md",
-	"bugs": "https://github.com/absmartly/vue2-sdk/issues",
+	"name": "@absmartly/vue3-sdk",
+	"version": "1.0.0",
+	"homepage": "https://github.com/absmartly/vue3-sdk#README.md",
+	"bugs": "https://github.com/absmartly/vue3-sdk/issues",
 	"keywords": [
 		"absmartly",
 		"ab-smartly",
@@ -14,7 +14,7 @@
 		"a/b",
 		"cro",
 		"vue",
-		"vue2"
+		"vue3"
 	],
 	"license": "Apache-2.0",
 	"main": "dist/absmartly.common.js",
