@@ -45,7 +45,7 @@ export default {
 		app.config.globalProperties[options.globalName] = context;
 
 		app.provide("__absmartlyGlobal", options.globalName);
-		app.provide("options.globalName", context);
+		app.provide(options.globalName, context);
 
 		if (options.globalComponents) {
 			app.component("Treatment", Treatment);
