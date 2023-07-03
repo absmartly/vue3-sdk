@@ -17,52 +17,57 @@ const mockCreateContextWith = jest.fn().mockImplementation(() => {
 SDK.mockImplementation(() => {
 	return {
 		createContext: mockCreateContext,
-		createContextWith: mockCreateContextWith
+		createContextWith: mockCreateContextWith,
 	};
 });
 
 describe("ABSmartly Vue.js Plugin", () => {
 	const Component = {
-		template: "<div>test</div>"
+		template: "<div>test</div>",
 	};
 
 	const sdkOptions = {
-		test: 1
+		test: 1,
 	};
 
 	const contextOptions = {
 		refreshPeriod: 600000,
-		test: 2
+		test: 2,
 	};
 
 	const context = {
-		test: 2
+		test: 2,
 	};
 
 	const data = {
-		test: 2
+		test: 2,
 	};
 
 	const attrs = {
 		attr1: "value1",
-		attr2: "value2"
+		attr2: "value2",
 	};
 
 	const overrides = {
-		not_found: 2
+		not_found: 2,
 	};
 
-	it("should create SDK and context", done => {
+	it("should create SDK and context", (done) => {
 		const wrapper = mount(Component, {
 			global: {
-				plugins: [[ABSmartly, {
-					sdkOptions,
-					context,
-					contextOptions,
-					attributes: attrs,
-					overrides
-				}]]
-			}
+				plugins: [
+					[
+						ABSmartly,
+						{
+							sdkOptions,
+							context,
+							contextOptions,
+							attributes: attrs,
+							overrides,
+						},
+					],
+				],
+			},
 		});
 
 		expect(SDK).toHaveBeenCalledTimes(1);
@@ -78,23 +83,28 @@ describe("ABSmartly Vue.js Plugin", () => {
 
 		done();
 	});
-	it("should create context with default options", done => {
+	it("should create context with default options", (done) => {
 		const wrapper = mount(Component, {
 			global: {
-				plugins: [[ABSmartly, {
-					sdkOptions,
-					context,
-					attributes: attrs,
-					overrides
-				}]]
-			}
+				plugins: [
+					[
+						ABSmartly,
+						{
+							sdkOptions,
+							context,
+							attributes: attrs,
+							overrides,
+						},
+					],
+				],
+			},
 		});
 
 		expect(SDK).toHaveBeenCalledTimes(1);
 		expect(SDK).toHaveBeenLastCalledWith(sdkOptions);
 		expect(mockCreateContext).toHaveBeenCalledTimes(1);
 		expect(mockCreateContext).toHaveBeenCalledWith(context, {
-			refreshPeriod: 300000
+			refreshPeriod: 300000,
 		});
 
 		expect(wrapper.vm.$absmartly.attributes).toHaveBeenCalledTimes(1);
@@ -106,16 +116,20 @@ describe("ABSmartly Vue.js Plugin", () => {
 		done();
 	});
 
-
-	it("should create SDK and context with no attributes and no overrides", done => {
+	it("should create SDK and context with no attributes and no overrides", (done) => {
 		const wrapper = mount(Component, {
 			global: {
-				plugins: [[ABSmartly, {
-					sdkOptions,
-					context,
-					contextOptions
-				}]]
-			}
+				plugins: [
+					[
+						ABSmartly,
+						{
+							sdkOptions,
+							context,
+							contextOptions,
+						},
+					],
+				],
+			},
 		});
 
 		expect(SDK).toHaveBeenCalledTimes(1);
@@ -129,18 +143,23 @@ describe("ABSmartly Vue.js Plugin", () => {
 		done();
 	});
 
-	it("should create SDK and context with data", done => {
+	it("should create SDK and context with data", (done) => {
 		const wrapper = mount(Component, {
 			global: {
-				plugins: [[ABSmartly, {
-					sdkOptions,
-					context,
-					data,
-					contextOptions,
-					attributes: attrs,
-					overrides
-				}]]
-			}
+				plugins: [
+					[
+						ABSmartly,
+						{
+							sdkOptions,
+							context,
+							data,
+							contextOptions,
+							attributes: attrs,
+							overrides,
+						},
+					],
+				],
+			},
 		});
 
 		expect(SDK).toHaveBeenCalledTimes(1);
@@ -157,16 +176,21 @@ describe("ABSmartly Vue.js Plugin", () => {
 		done();
 	});
 
-	it("should use passed context", done => {
+	it("should use passed context", (done) => {
 		const mockContext = new Context();
 		const wrapper = mount(Component, {
 			global: {
-				plugins: [[ABSmartly, {
-					context: mockContext,
-					attributes: attrs,
-					overrides
-				}]]
-			}
+				plugins: [
+					[
+						ABSmartly,
+						{
+							context: mockContext,
+							attributes: attrs,
+							overrides,
+						},
+					],
+				],
+			},
 		});
 
 		expect(SDK).not.toHaveBeenCalled();
@@ -184,13 +208,18 @@ describe("ABSmartly Vue.js Plugin", () => {
 		done();
 	});
 
-	it("should add global $absmartly context object", done => {
+	it("should add global $absmartly context object", (done) => {
 		const wrapper = mount(Component, {
 			global: {
-				plugins: [[ABSmartly, {
-					sdkOptions
-				}]]
-			}
+				plugins: [
+					[
+						ABSmartly,
+						{
+							sdkOptions,
+						},
+					],
+				],
+			},
 		});
 
 		expect(wrapper.vm.$absmartly).toBeInstanceOf(Context);
@@ -198,14 +227,19 @@ describe("ABSmartly Vue.js Plugin", () => {
 		done();
 	});
 
-	it("should add options.globalName context object", done => {
+	it("should add options.globalName context object", (done) => {
 		const wrapper = mount(Component, {
 			global: {
-				plugins: [[ABSmartly, {
-					sdkOptions,
-					globalName: "$exp"
-				}]]
-			}
+				plugins: [
+					[
+						ABSmartly,
+						{
+							sdkOptions,
+							globalName: "$exp",
+						},
+					],
+				],
+			},
 		});
 
 		expect(wrapper.vm.$exp).toBeInstanceOf(Context);
@@ -213,17 +247,22 @@ describe("ABSmartly Vue.js Plugin", () => {
 		done();
 	});
 
-	it("should register components by default", done => {
+	it("should register components by default", (done) => {
 		const wrapper = mount(Component, {
 			global: {
-				plugins: [[ABSmartly, {
-					sdkOptions
-				}]]
-			}
+				plugins: [
+					[
+						ABSmartly,
+						{
+							sdkOptions,
+						},
+					],
+				],
+			},
 		});
 
 		const expectedComponents = {
-			Treatment
+			Treatment,
 		};
 
 		for (const componentName of Object.keys(expectedComponents)) {
@@ -233,19 +272,24 @@ describe("ABSmartly Vue.js Plugin", () => {
 		done();
 	});
 
-	it("should not register components when options.globalComponents is false", done => {
+	it("should not register components when options.globalComponents is false", (done) => {
 		const globalComponents = false;
 		const wrapper = mount(Component, {
 			global: {
-				plugins: [[ABSmartly, {
-					sdkOptions,
-					globalComponents
-				}]]
-			}
+				plugins: [
+					[
+						ABSmartly,
+						{
+							sdkOptions,
+							globalComponents,
+						},
+					],
+				],
+			},
 		});
 
 		const expectedComponents = {
-			Treatment
+			Treatment,
 		};
 
 		for (const componentName of Object.keys(expectedComponents)) {

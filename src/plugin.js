@@ -7,7 +7,7 @@ export default {
 			{},
 			{
 				globalName: "$absmartly",
-				globalComponents: true
+				globalComponents: true,
 			},
 			options
 		);
@@ -21,7 +21,7 @@ export default {
 			const contextOptions = Object.assign(
 				{},
 				{
-					refreshPeriod: 5 * 60 * 1000
+					refreshPeriod: 5 * 60 * 1000,
 				},
 				options.contextOptions || {}
 			);
@@ -44,11 +44,11 @@ export default {
 		app.config.globalProperties.__absmartlyGlobal = options.globalName;
 		app.config.globalProperties[options.globalName] = context;
 
-		app.provide('__absmartlyGlobal', options.globalName);
-		app.provide('options.globalName', context);
+		app.provide("__absmartlyGlobal", options.globalName);
+		app.provide("options.globalName", context);
 
 		if (options.globalComponents) {
 			app.component("Treatment", Treatment);
 		}
-	}
+	},
 };
