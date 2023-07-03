@@ -1,6 +1,6 @@
 {
 	"name": "@absmartly/vue3-sdk",
-	"version": "2.0.0",
+	"version": "2.0.1",
 	"homepage": "https://github.com/absmartly/vue3-sdk#README.md",
 	"bugs": {
 		"url": "https://github.com/absmartly/vue3-sdk/issues"
