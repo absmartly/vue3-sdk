@@ -1,87 +1,87 @@
 <script>
 import { h } from "vue";
 export default {
-	name: "Treatment",
-	props: {
-		name: {
-			type: String,
-			required: true,
-		},
+    name: "Treatment",
+    props: {
+        name: {
+            type: String,
+            required: true,
+        },
 
-		attributes: {
-			type: Object,
-			default() {
-				return undefined;
-			},
-		},
-	},
+        attributes: {
+            type: Object,
+            default() {
+                return undefined;
+            },
+        },
+    },
 
-	data() {
-		return {
-			ready: false,
-			failed: undefined,
-			treatment: undefined,
-			treatmentNames: undefined,
-		};
-	},
+    data() {
+        return {
+            ready: false,
+            failed: undefined,
+            treatment: undefined,
+            treatmentNames: undefined,
+        };
+    },
 
-	beforeMount() {
-		const updateState = (context) => {
-			this.failed = context.isFailed();
+    beforeMount() {
+        const updateState = (context) => {
+            this.failed = context.isFailed();
 
-			if (context.isReady()) {
-				if (this.attributes instanceof Object) {
-					context.attributes(this.attributes);
-				}
+            if (context.isReady()) {
+                if (this.attributes instanceof Object) {
+                    context.attributes(this.attributes);
+                }
 
-				this.treatment = context.treatment(this.name);
-				this.ready = true;
-			}
+                this.treatment = context.treatment(this.name);
+                this.ready = true;
+            }
 
-			if (this.ready) {
-				this.treatmentNames = [String.fromCharCode(65 + this.treatment), this.treatment.toString(), "default"];
-			} else {
-				this.treatmentNames = ["loading", "default"];
-			}
-		};
+            if (this.ready) {
+                this.treatmentNames = [String.fromCharCode(65 + this.treatment), this.treatment.toString(), "default"];
+            } else {
+                this.treatmentNames = ["loading", "default"];
+            }
+        };
 
-		const context = this[this.__absmartlyGlobal];
-		updateState(context);
+        const context = this[this.__absmartlyGlobal];
+        updateState(context);
 
-		if (!context.isReady()) {
-			context.ready().then(() => {
-				updateState(context);
-			});
-		}
-	},
+        if (!context.isReady()) {
+            context.ready().then(() => {
+                updateState(context);
+            });
+        }
+    },
 
-	render() {
-		const findSlot = (obj, names) => {
-			for (const name of names) {
-				if (name in obj) {
-					return name;
-				}
-			}
-			return undefined;
-		};
+    render() {
+        const findSlot = (obj, names) => {
+            for (const name of names) {
+                if (name in obj) {
+                    return name;
+                }
+            }
+            return undefined;
+        };
 
-		const props = this.ready
-			? {
-					treatment: this.treatment || 0,
-					ready: this.ready,
-					failed: this.failed,
-			  }
-			: {
-					ready: this.ready,
-					failed: this.failed,
-			  };
+        const props = this.ready
+            ? {
+                treatment: this.treatment || 0,
+                ready: this.ready,
+                failed: this.failed,
+            }
+            : {
+                ready: this.ready,
+                failed: this.failed,
+            };
 
-		const slotName = findSlot(this.$slots, this.treatmentNames);
-		if (slotName === undefined) {
-			throw new Error(`No matching treatment slots. Expected one of ${this.treatmentNames}`);
-		}
+        const slotName = findSlot(this.$slots, this.treatmentNames);
+        if (slotName === undefined) {
+            throw new Error(`No matching treatment slots. Expected one of ${this.treatmentNames}`);
+        }
 
-		return h("div", [this.$slots[slotName](props)]);
-	},
+        return h("div", [this.$slots[slotName](props)]);
+    },
 };
 </script>
