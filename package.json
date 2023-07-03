@@ -1,8 +1,10 @@
 {
-	"name": "@absmartly/vue2-sdk",
+	"name": "@absmartly/vue3-sdk",
 	"version": "2.0.0",
-	"homepage": "https://github.com/absmartly/vue2-sdk#README.md",
-	"bugs": "https://github.com/absmartly/vue2-sdk/issues",
+	"homepage": "https://github.com/absmartly/vue3-sdk#README.md",
+	"bugs": {
+		"url": "https://github.com/absmartly/vue3-sdk/issues"
+	},
 	"keywords": [
 		"absmartly",
 		"ab-smartly",
@@ -14,7 +16,7 @@
 		"a/b",
 		"cro",
 		"vue",
-		"vue2"
+		"vue3"
 	],
 	"license": "Apache-2.0",
 	"main": "dist/absmartly.common.js",
@@ -25,7 +27,7 @@
 		"prepack": "npm -s upgrade && npm run -s build",
 		"test": "vue-cli-service test:unit --coverage",
 		"lint": "vue-cli-service lint",
-		"format": "prettier --write '**/*.{js,mjs,jsx,json,vue}'"
+		"format": "prettier --write **/*.{js,mjs,jsx,json,vue}"
 	},
 	"dependencies": {
 		"@absmartly/javascript-sdk": "^1.11.4"
@@ -36,6 +38,7 @@
 	"devDependencies": {
 		"@babel/eslint-parser": "^7.22.5",
 		"@vue/cli-plugin-babel": "^5.0.8",
+		"@vue/cli-plugin-eslint": "^5.0.8",
 		"@vue/cli-plugin-unit-jest": "^5.0.8",
 		"@vue/cli-service": "^5.0.8",
 		"@vue/test-utils": "^2.4.0",
@@ -61,5 +64,14 @@
 		"env": {
 			"vue/setup-compiler-macros": true
 		}
-	}
+	},
+	"description": "A/B Smartly - Vue3 SDK",
+	"directories": {
+		"test": "tests"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/absmartly/vue3-sdk.git"
+	},
+	"author": ""
 }

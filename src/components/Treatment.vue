@@ -1,19 +1,20 @@
 <script>
-import {h} from 'vue';
+import { h } from "vue";
+
 export default {
 	name: "Treatment",
 	props: {
 		name: {
 			type: String,
-			required: true
+			required: true,
 		},
 
 		attributes: {
 			type: Object,
 			default() {
 				return undefined;
-			}
-		}
+			},
+		},
 	},
 
 	data() {
@@ -21,12 +22,12 @@ export default {
 			ready: false,
 			failed: undefined,
 			treatment: undefined,
-			treatmentNames: undefined
+			treatmentNames: undefined,
 		};
 	},
 
 	beforeMount() {
-		const updateState = context => {
+		const updateState = (context) => {
 			this.failed = context.isFailed();
 
 			if (context.isReady()) {
@@ -67,14 +68,14 @@ export default {
 
 		const props = this.ready
 			? {
-				treatment: this.treatment || 0,
-				ready: this.ready,
-				failed: this.failed
-			}
+					treatment: this.treatment || 0,
+					ready: this.ready,
+					failed: this.failed,
+			  }
 			: {
-				ready: this.ready,
-				failed: this.failed
-			};
+					ready: this.ready,
+					failed: this.failed,
+			  };
 
 		const slotName = findSlot(this.$slots, this.treatmentNames);
 		if (slotName === undefined) {
