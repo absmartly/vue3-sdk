@@ -6,7 +6,7 @@ A/B Smartly - Vue3 SDK
 
 The A/B Smartly Vue3 SDK is a thin wrapper around the [A/B Smartly JavaScript SDK](https://www.github.com/absmartly/javascript-sdk)
 
-It requires Vue3 version 2.6.0+ and is supported on IE 10+ and all the other major browsers.
+It requires Vue3 version 3.3.0+ and is supported on IE 10+ and all the other major browsers.
 
 **Note**: IE 10 does not natively support Promises.
 If you target IE 10, you must include a polyfill like [es6-promise](https://www.npmjs.com/package/es6-promise) or [rsvp](https://www.npmjs.com/package/rsvp).
