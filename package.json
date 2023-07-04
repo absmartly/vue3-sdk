@@ -1,6 +1,6 @@
 {
 	"name": "@absmartly/vue3-sdk",
-	"version": "2.0.1",
+	"version": "1.0.0",
 	"homepage": "https://github.com/absmartly/vue3-sdk#README.md",
 	"bugs": {
 		"url": "https://github.com/absmartly/vue3-sdk/issues"
@@ -27,7 +27,7 @@
 		"prepack": "npm -s upgrade && npm run -s build",
 		"test": "vue-cli-service test:unit --coverage",
 		"lint": "vue-cli-service lint",
-		"format": "prettier --write **/*.{js,mjs,jsx,json,vue}"
+		"format": "prettier --write **/*.{js,json,vue}"
 	},
 	"dependencies": {
 		"@absmartly/javascript-sdk": "^1.11.4"
