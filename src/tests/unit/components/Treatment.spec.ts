@@ -1,21 +1,22 @@
 import { mount } from "@vue/test-utils";
-import Treatment from "@/components/Treatment.vue";
+import { Treatment } from "../../../index.ts";
+import { describe, expect, it, vi } from "vitest";
 
 describe("Treatment.vue", () => {
 	const mocks = {
 		__absmartlyGlobal: "$absmartly",
 		$absmartly: {
-			treatment: jest.fn(),
-			attributes: jest.fn(),
-			ready: jest.fn(),
-			isReady: jest.fn(),
-			isFailed: jest.fn(),
+			treatment: vi.fn(),
+			attributes: vi.fn(),
+			ready: vi.fn(),
+			isReady: vi.fn(),
+			isFailed: vi.fn(),
 		},
 	};
 
-	it("it should not render loading slot when ready", (done) => {
-		const slotMock = jest.fn();
-		const loadingMock = jest.fn();
+	it("it should not render loading slot when ready", () => {
+		const slotMock = vi.fn();
+		const loadingMock = vi.fn();
 
 		const attributes = {
 			attr1: 15,
@@ -52,13 +53,11 @@ describe("Treatment.vue", () => {
 			failed: false,
 			treatment: 1,
 		});
-
-		done();
 	});
 
-	it("should render loading slot when not ready", (done) => {
-		const slotMock = jest.fn();
-		const loadingMock = jest.fn();
+	it("should render loading slot when not ready", () => {
+		const slotMock = vi.fn();
+		const loadingMock = vi.fn();
 
 		mocks.$absmartly.isReady.mockReturnValue(false);
 		mocks.$absmartly.isFailed.mockReturnValue(false);
@@ -110,14 +109,12 @@ describe("Treatment.vue", () => {
 					failed: false,
 					treatment: 1,
 				});
-
-				done();
 			});
 		});
 	});
 
-	it("should render default slot when not ready", (done) => {
-		const slotMock = jest.fn();
+	it("should render default slot when not ready", () => {
+		const slotMock = vi.fn();
 
 		mocks.$absmartly.isReady.mockReturnValue(false);
 		mocks.$absmartly.isFailed.mockReturnValue(false);
@@ -169,8 +166,6 @@ describe("Treatment.vue", () => {
 					failed: false,
 					treatment: 1,
 				});
-
-				done();
 			});
 		});
 	});
@@ -181,8 +176,8 @@ describe("Treatment.vue", () => {
 		[2, "2"],
 		[3, "3"],
 		[4, "4"],
-	])("should render treatment slot %i by index (%s)", (treatment, slot, done) => {
-		const slotMock = jest.fn();
+	])("should render treatment slot %i by index (%s)", (treatment, slot) => {
+		const slotMock = vi.fn();
 
 		mocks.$absmartly.isReady.mockReturnValue(true);
 		mocks.$absmartly.isFailed.mockReturnValue(false);
@@ -207,8 +202,6 @@ describe("Treatment.vue", () => {
 			failed: false,
 			treatment: treatment,
 		});
-
-		done();
 	});
 
 	it.each([
@@ -217,8 +210,8 @@ describe("Treatment.vue", () => {
 		[2, "C"],
 		[3, "D"],
 		[4, "E"],
-	])("should render treatment slot %i by alpha (%s)", (treatment, slot, done) => {
-		const slotMock = jest.fn();
+	])("should render treatment slot %i by alpha (%s)", (treatment, slot) => {
+		const slotMock = vi.fn();
 
 		mocks.$absmartly.isReady.mockReturnValue(true);
 		mocks.$absmartly.isFailed.mockReturnValue(false);
@@ -243,12 +236,10 @@ describe("Treatment.vue", () => {
 			failed: false,
 			treatment,
 		});
-
-		done();
 	});
 
-	it.each([[0], [1], [2], [3], [4]])("should render default treatment slot for treatment %i", (treatment, done) => {
-		const slotMock = jest.fn();
+	it.each([[0], [1], [2], [3], [4]])("should render default treatment slot for treatment %i", (treatment) => {
+		const slotMock = vi.fn();
 
 		mocks.$absmartly.isReady.mockReturnValue(true);
 		mocks.$absmartly.isFailed.mockReturnValue(false);
@@ -273,19 +264,17 @@ describe("Treatment.vue", () => {
 			failed: false,
 			treatment,
 		});
-
-		done();
 	});
 
-	it("should throw with no matching slot", (done) => {
-		const slotMock = jest.fn();
+	it("should throw with no matching slot", () => {
+		const slotMock = vi.fn();
 
 		mocks.$absmartly.isReady.mockReturnValue(true);
 		mocks.$absmartly.isFailed.mockReturnValue(false);
 		mocks.$absmartly.treatment.mockReturnValue(2);
 
 		expect(() => {
-			jest.spyOn(console, "error").mockImplementation(() => {}); // suppress expected Vue error
+			vi.spyOn(console, "error").mockImplementation(() => {}); // suppress expected Vue error
 			mount(Treatment, {
 				props: {
 					name: "test_exp",
@@ -301,12 +290,10 @@ describe("Treatment.vue", () => {
 		}).toThrow(new Error("No matching treatment slots. Expected one of C,2,default"));
 
 		expect(slotMock).not.toHaveBeenCalled();
-
-		done();
 	});
 
-	it("should not call context.attributes with no attribute property", (done) => {
-		const slotMock = jest.fn();
+	it("should not call context.attributes with no attribute property", () => {
+		const slotMock = vi.fn();
 		mocks.$absmartly.isReady.mockReturnValue(true);
 		mocks.$absmartly.isFailed.mockReturnValue(false);
 		mocks.$absmartly.treatment.mockReturnValue(1);
@@ -328,7 +315,5 @@ describe("Treatment.vue", () => {
 		expect(mocks.$absmartly.treatment).toHaveBeenCalledWith("test_exp");
 		expect(mocks.$absmartly.attributes).not.toHaveBeenCalledWith();
 		expect(slotMock).toHaveBeenCalledTimes(1);
-
-		done();
 	});
 });

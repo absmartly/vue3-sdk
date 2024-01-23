@@ -1,0 +1,68 @@
+Arguments: 
+  /Users/calthejuggler/.nvm/versions/node/v18.18.2/bin/node /Users/calthejuggler/.yarn/releases/yarn-1.22.19.cjs global bin
+
+PATH: 
+  /Users/calthejuggler/.nvm/versions/node/v18.18.2/bin:/Users/calthejuggler/.pyenv/bin:/opt/homebrew/sbin:/Users/calthejuggler/.cargo/bin:/opt/homebrew/bin:/Users/calthejuggler/.bun/bin:/Users/calthejuggler/Library/pnpm:/Users/calthejuggler/.pyenv/shims:/Users/calthejuggler/.nvm/versions/node/v18.18.2/bin:/usr/bin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Library/Apple/usr/bin:/usr/local/share/dotnet:~/.dotnet/tools:/usr/local/go/bin:/Users/calthejuggler/.bun/bin:/Users/calthejuggler/Library/pnpm:/Users/calthejuggler/.sdkman/candidates/java/current/bin:/Users/calthejuggler/.sdkman/candidates/gradle/current/bin:/Users/calthejuggler/.nvm/versions/node/v18.18.2/bin:/Users/calthejuggler/FlutterDev/flutter/bin:/Users/calthejuggler/FlutterDev/flutter/bin:/usr/local/bin:/Users/calthejuggler/FlutterDev/flutter/bin
+
+Yarn version: 
+  1.22.19
+
+Node version: 
+  18.18.2
+
+Platform: 
+  darwin arm64
+
+Trace: 
+  SyntaxError: /Users/calthejuggler/Projects/vue3-sdk-test/package.json: Unexpected token } in JSON at position 583
+      at JSON.parse (<anonymous>)
+      at /Users/calthejuggler/.yarn/releases/yarn-1.22.19.cjs:1104:57
+      at Generator.next (<anonymous>)
+      at step (/Users/calthejuggler/.yarn/releases/yarn-1.22.19.cjs:310:30)
+      at /Users/calthejuggler/.yarn/releases/yarn-1.22.19.cjs:321:13
+
+npm manifest: 
+  {
+    "name": "vue3-sdk-test",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "files": [
+      "dist"
+    ],
+    "main": "./dist/absmartly.umd.cjs",
+    "module": "./dist/absmartly.js",
+    "exports": {
+      ".": {
+        "import": "./dist/absmartly.js",
+        "require": "./dist/absmartly.umd.cjs"
+      }
+    },
+    "types": "./dist/index.d.ts",
+    "scripts": {
+      "dev": "vite",
+      "build": "vite build && vue-tsc --emitDeclarationOnly",
+      "types": "vue-tsc",
+      "test": "jest",
+      "preview": "vite preview"
+    },
+    "dependencies": {
+      "@absmartly/javascript-sdk": "^1.13.1",
+    },
+    "peerDependencies": {
+      "vue": "^3.3.11"
+    },
+    "devDependencies": {
+      "@types/node": "^20.11.5",
+      "@vitejs/plugin-vue": "^4.5.2",
+      "typescript": "^5.2.2",
+      "vite": "^5.0.8",
+      "vue-tsc": "^1.8.25"
+    }
+  }
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile
