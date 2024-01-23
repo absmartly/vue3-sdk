@@ -1,5 +1,6 @@
-<script>
+<script lang="ts">
 import { h } from "vue";
+import { Context } from "@absmartly/javascript-sdk";
 
 export default {
 	name: "Treatment",
@@ -17,7 +18,7 @@ export default {
 		},
 	},
 
-	data() {
+	data(): { ready: boolean; failed?: boolean; treatment?: number; treatmentNames?: string[] } {
 		return {
 			ready: false,
 			failed: undefined,
@@ -27,11 +28,11 @@ export default {
 	},
 
 	beforeMount() {
-		const updateState = (context) => {
+		const updateState = (context: Context) => {
 			this.failed = context.isFailed();
 
 			if (context.isReady()) {
-				if (this.attributes instanceof Object) {
+				if (this.attributes != null) {
 					context.attributes(this.attributes);
 				}
 
@@ -40,13 +41,15 @@ export default {
 			}
 
 			if (this.ready) {
+				if (this.treatment == null) throw new Error("Context is ready, but treatment is not.");
 				this.treatmentNames = [String.fromCharCode(65 + this.treatment), this.treatment.toString(), "default"];
 			} else {
 				this.treatmentNames = ["loading", "default"];
 			}
 		};
 
-		const context = this[this.__absmartlyGlobal];
+		// @ts-ignore
+		const context: Context = this[this.__absmartlyGlobal];
 		updateState(context);
 
 		if (!context.isReady()) {
@@ -57,7 +60,7 @@ export default {
 	},
 
 	render() {
-		const findSlot = (obj, names) => {
+		const findSlot = (obj: Record<string, unknown>, names: string[] = []) => {
 			for (const name of names) {
 				if (name in obj) {
 					return name;
@@ -71,18 +74,18 @@ export default {
 					treatment: this.treatment || 0,
 					ready: this.ready,
 					failed: this.failed,
-			  }
+				}
 			: {
 					ready: this.ready,
 					failed: this.failed,
-			  };
+				};
 
 		const slotName = findSlot(this.$slots, this.treatmentNames);
 		if (slotName === undefined) {
 			throw new Error(`No matching treatment slots. Expected one of ${this.treatmentNames}`);
 		}
 
-		return h("div", [this.$slots[slotName](props)]);
+		return h("div", [this.$slots[slotName]?.(props)]);
 	},
 };
 </script>

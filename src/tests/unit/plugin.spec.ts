@@ -1,24 +1,67 @@
 import { Context, SDK } from "@absmartly/javascript-sdk";
 import { mount } from "@vue/test-utils";
-import ABSmartly from "@/plugin";
-import Treatment from "@/components/Treatment.vue";
+import { ABSmartlyVue as ABSmartly, Treatment } from "../../index.ts";
+import { describe, expect, it, vi } from "vitest";
+import { ContextData, ContextOptions, ContextParams } from "@absmartly/javascript-sdk/types/context";
 
-jest.mock("@absmartly/javascript-sdk");
+type ContextArgs = [SDK, ContextOptions, ContextParams, ContextData];
 
-const mockCreateContext = jest.fn().mockImplementation(() => {
-	return new Context();
+// const {
+// 	mockCreateContext,
+// 	mockCreateContextWith,
+// 	mockGetContextPublisher,
+// 	mockGetContextDataProvider,
+// 	mockGetEventLogger,
+// } = vi.hoisted(() => {
+const defaultSDK = new SDK({
+	apiKey: "test_api_key",
+	endpoint: "test.absmartly.io",
+	application: "test-env",
+	environment: "test",
 });
 
-const mockCreateContextWith = jest.fn().mockImplementation(() => {
-	return new Context();
-});
+const defaultContextArgs: ContextArgs = [
+	defaultSDK,
+	{ refreshPeriod: 5 * 60 * 1000, publishDelay: 5 },
+	{ units: { user_id: "1234567890" } },
+	{},
+];
+//
+// 	return {
+// 		mockCreateContext: vi.fn(() => new Context(...defaultContextArgs)),
+// 		mockCreateContextWith: vi.fn(() => new Context(...defaultContextArgs)),
+// 		mockGetContextPublisher: vi.fn(() => new ContextPublisher()),
+// 		mockGetContextDataProvider: vi.fn(() => new ContextDataProvider()),
+// 		mockGetEventLogger: vi.fn(),
+// 	};
+// });
 
-SDK.mockImplementation(() => {
-	return {
-		createContext: mockCreateContext,
-		createContextWith: mockCreateContextWith,
-	};
-});
+const mockCreateContext = vi.fn(() => new Context(...defaultContextArgs));
+const mockCreateContextWith = vi.fn(() => new Context(...defaultContextArgs));
+
+vi.mock("@absmartly/javascript-sdk");
+
+// @ts-ignore
+SDK.mockImplementation(() => ({
+	createContext: mockCreateContext,
+	createContextWith: mockCreateContextWith,
+}));
+
+// 	const mockSDK = {
+// 		createContext: mockCreateContext,
+// 		createContextWith: mockCreateContextWith,
+// 		getContextPublisher: mockGetContextPublisher,
+// 		getContextDataProvider: mockGetContextDataProvider,
+// 		getEventLogger: mockGetEventLogger,
+// 	};
+//
+// 	const abSmartly = (await importOriginal()) as typeof ABSmartly;
+//
+// 	return {
+// 		...abSmartly,
+// 		SDK: vi.fn(() => mockSDK),
+// 	};
+// });
 
 describe("ABSmartly Vue.js Plugin", () => {
 	const Component = {
@@ -51,7 +94,7 @@ describe("ABSmartly Vue.js Plugin", () => {
 		not_found: 2,
 	};
 
-	it("should create SDK and context", (done) => {
+	it("should create SDK and context", () => {
 		const wrapper = mount(Component, {
 			global: {
 				plugins: [
@@ -79,10 +122,9 @@ describe("ABSmartly Vue.js Plugin", () => {
 
 		expect(wrapper.vm.$absmartly.overrides).toHaveBeenCalledTimes(1);
 		expect(wrapper.vm.$absmartly.overrides).toHaveBeenCalledWith(overrides);
-
-		done();
 	});
-	it("should create context with default options", (done) => {
+
+	it("should create context with default options", () => {
 		const wrapper = mount(Component, {
 			global: {
 				plugins: [
@@ -111,11 +153,9 @@ describe("ABSmartly Vue.js Plugin", () => {
 
 		expect(wrapper.vm.$absmartly.overrides).toHaveBeenCalledTimes(1);
 		expect(wrapper.vm.$absmartly.overrides).toHaveBeenCalledWith(overrides);
-
-		done();
 	});
 
-	it("should create SDK and context with no attributes and no overrides", (done) => {
+	it("should create SDK and context with no attributes and no overrides", () => {
 		const wrapper = mount(Component, {
 			global: {
 				plugins: [
@@ -138,11 +178,9 @@ describe("ABSmartly Vue.js Plugin", () => {
 
 		expect(wrapper.vm.$absmartly.attributes).not.toHaveBeenCalled();
 		expect(wrapper.vm.$absmartly.overrides).not.toHaveBeenCalled();
-
-		done();
 	});
 
-	it("should create SDK and context with data", (done) => {
+	it("should create SDK and context with data", () => {
 		const wrapper = mount(Component, {
 			global: {
 				plugins: [
@@ -171,12 +209,10 @@ describe("ABSmartly Vue.js Plugin", () => {
 
 		expect(wrapper.vm.$absmartly.overrides).toHaveBeenCalledTimes(1);
 		expect(wrapper.vm.$absmartly.overrides).toHaveBeenCalledWith(overrides);
-
-		done();
 	});
 
-	it("should use passed context", (done) => {
-		const mockContext = new Context();
+	it("should use passed context", () => {
+		const mockContext = new Context(...defaultContextArgs);
 		const wrapper = mount(Component, {
 			global: {
 				plugins: [
@@ -203,11 +239,9 @@ describe("ABSmartly Vue.js Plugin", () => {
 		expect(wrapper.vm.$absmartly.overrides).toHaveBeenCalledWith(overrides);
 
 		expect(wrapper.vm.$absmartly).toBe(mockContext);
-
-		done();
 	});
 
-	it("should add global $absmartly context object", (done) => {
+	it("should add global $absmartly context object", () => {
 		const wrapper = mount(Component, {
 			global: {
 				plugins: [
@@ -222,11 +256,9 @@ describe("ABSmartly Vue.js Plugin", () => {
 		});
 
 		expect(wrapper.vm.$absmartly).toBeInstanceOf(Context);
-
-		done();
 	});
 
-	it("should add options.globalName context object", (done) => {
+	it("should add options.globalName context object", () => {
 		const wrapper = mount(Component, {
 			global: {
 				plugins: [
@@ -242,11 +274,9 @@ describe("ABSmartly Vue.js Plugin", () => {
 		});
 
 		expect(wrapper.vm.$exp).toBeInstanceOf(Context);
-
-		done();
 	});
 
-	it("should register components by default", (done) => {
+	it("should register components by default", () => {
 		const wrapper = mount(Component, {
 			global: {
 				plugins: [
@@ -265,13 +295,12 @@ describe("ABSmartly Vue.js Plugin", () => {
 		};
 
 		for (const componentName of Object.keys(expectedComponents)) {
+			// @ts-expect-error
 			expect(wrapper.__app._context.components).toHaveProperty(componentName);
 		}
-
-		done();
 	});
 
-	it("should not register components when options.globalComponents is false", (done) => {
+	it("should not register components when options.globalComponents is false", () => {
 		const globalComponents = false;
 		const wrapper = mount(Component, {
 			global: {
@@ -292,9 +321,8 @@ describe("ABSmartly Vue.js Plugin", () => {
 		};
 
 		for (const componentName of Object.keys(expectedComponents)) {
+			// @ts-expect-error
 			expect(wrapper.__app._context.components).not.toHaveProperty(componentName);
 		}
-
-		done();
 	});
 });

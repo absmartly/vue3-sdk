@@ -1,77 +1,80 @@
 {
-	"name": "@absmartly/vue3-sdk",
-	"version": "1.0.1",
-	"homepage": "https://github.com/absmartly/vue3-sdk#README.md",
-	"bugs": {
-		"url": "https://github.com/absmartly/vue3-sdk/issues"
-	},
-	"keywords": [
-		"absmartly",
-		"ab-smartly",
-		"a/b-smartly",
-		"ab-testing",
-		"a/b-testing",
-		"split-testing",
-		"ab",
-		"a/b",
-		"cro",
-		"vue",
-		"vue3"
-	],
-	"license": "Apache-2.0",
-	"main": "dist/absmartly.common.js",
-	"browser": "dist/absmartly.umd.js",
-	"unpkg": "dist/absmartly.umd.min.js",
-	"scripts": {
-		"build": "npm run -s format && vue-cli-service lint && vue-cli-service build --progress --target lib --name absmartly src/index.js && rm ./dist/demo.html",
-		"prepack": "npm -s upgrade && npm run -s build",
-		"test": "vue-cli-service test:unit --coverage",
-		"lint": "vue-cli-service lint",
-		"format": "prettier --write **/*.{js,json,vue}"
-	},
-	"dependencies": {
-		"@absmartly/javascript-sdk": "^1.11.4"
-	},
-	"peerDependencies": {
-		"vue": "^3.3.0"
-	},
-	"devDependencies": {
-		"@babel/eslint-parser": "^7.22.5",
-		"@vue/cli-plugin-babel": "^5.0.8",
-		"@vue/cli-plugin-eslint": "^5.0.8",
-		"@vue/cli-plugin-unit-jest": "^5.0.8",
-		"@vue/cli-service": "^5.0.8",
-		"@vue/test-utils": "^2.4.0",
-		"@vue/vue3-jest": "^27.0.0",
-		"eslint": "^8.43.0",
-		"eslint-config-prettier": "^8.8.0",
-		"eslint-plugin-prettier": "^4.2.1",
-		"eslint-plugin-vue": "^9.15.1",
-		"prettier": "^2.8.8",
-		"vue-template-compiler": "^2.7.14"
-	},
-	"publishConfig": {
-		"access": "public"
-	},
-	"files": [
-		"README.md",
-		"CONTRIBUTING.md",
-		"LICENSE",
-		"package.json",
-		"dist"
-	],
-	"eslintConfig": {
-		"env": {
-			"vue/setup-compiler-macros": true
-		}
-	},
-	"description": "A/B Smartly - Vue3 SDK",
-	"directories": {
-		"test": "tests"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/absmartly/vue3-sdk.git"
-	},
-	"author": ""
+  "name": "@absmartly/vue3-sdk",
+  "version": "1.0.1",
+  "homepage": "https://github.com/absmartly/vue3-sdk#README.md",
+  "bugs": {
+    "url": "https://github.com/absmartly/vue3-sdk/issues"
+  },
+  "keywords": [
+    "absmartly",
+    "ab-smartly",
+    "a/b-smartly",
+    "ab-testing",
+    "a/b-testing",
+    "split-testing",
+    "ab",
+    "a/b",
+    "cro",
+    "vue",
+    "vue3"
+  ],
+  "license": "Apache-2.0",
+  "type": "module",
+  "files": [
+    "README.md",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "package.json",
+    "dist"
+  ],
+  "main": "./dist/absmartly.umd.cjs",
+  "unpkg": "dist/absmartly.umd.min.js",
+  "browser": "dist/absmartly.umd.js",
+  "module": "./dist/absmartly.js",
+  "exports": {
+    ".": {
+      "import": "./dist/absmartly.js",
+      "require": "./dist/absmartly.umd.cjs"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "rm -rf dist && npm run -s format && npm run test && vite build && vue-tsc --emitDeclarationOnly",
+    "prepack": "npm -s upgrade && npm run -s build",
+    "types": "vue-tsc",
+    "format": "prettier --write **/*.{js,ts,vue,json}",
+    "test": "vitest run --coverage"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@absmartly/javascript-sdk": "^1.13.1"
+  },
+  "peerDependencies": {
+    "vue": "^3.3.11"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "@vitejs/plugin-vue": "^4.5.2",
+    "@vitest/coverage-v8": "^1.2.1",
+    "@vue/test-utils": "^2.4.3",
+    "happy-dom": "^13.2.1",
+    "prettier": "^3.2.4",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8",
+    "vitest": "^1.2.1",
+    "vue-tsc": "^1.8.25"
+  },
+  "eslintConfig": {
+    "env": {
+      "vue/setup-compiler-macros": true
+    }
+  },
+  "description": "A/B Smartly - Vue3 SDK",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/absmartly/vue3-sdk.git"
+  },
+  "author": ""
 }
