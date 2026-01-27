@@ -297,4 +297,264 @@ describe("ABSmartly Vue.js Plugin", () => {
 
 		done();
 	});
+
+	describe("Options Handling", () => {
+		it("should merge default options with provided options", (done) => {
+			mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								sdkOptions,
+								contextOptions: {
+									refreshPeriod: 120000,
+									customOption: "value",
+								},
+							},
+						],
+					],
+				},
+			});
+
+			expect(mockCreateContext).toHaveBeenCalledWith(undefined, {
+				refreshPeriod: 120000,
+				customOption: "value",
+			});
+
+			done();
+		});
+
+		it("should handle null attributes gracefully", (done) => {
+			const wrapper = mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								sdkOptions,
+								attributes: null,
+							},
+						],
+					],
+				},
+			});
+
+			expect(wrapper.vm.$absmartly.attributes).not.toHaveBeenCalled();
+
+			done();
+		});
+
+		it("should handle null overrides gracefully", (done) => {
+			const wrapper = mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								sdkOptions,
+								overrides: null,
+							},
+						],
+					],
+				},
+			});
+
+			expect(wrapper.vm.$absmartly.overrides).not.toHaveBeenCalled();
+
+			done();
+		});
+
+		it("should handle undefined attributes gracefully", (done) => {
+			const wrapper = mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								sdkOptions,
+								attributes: undefined,
+							},
+						],
+					],
+				},
+			});
+
+			expect(wrapper.vm.$absmartly.attributes).not.toHaveBeenCalled();
+
+			done();
+		});
+
+		it("should use default refreshPeriod of 5 minutes", (done) => {
+			mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								sdkOptions,
+							},
+						],
+					],
+				},
+			});
+
+			expect(mockCreateContext).toHaveBeenCalledWith(undefined, {
+				refreshPeriod: 300000,
+			});
+
+			done();
+		});
+	});
+
+	describe("Global Properties", () => {
+		it("should set __absmartlyGlobal to the configured global name", (done) => {
+			const wrapper = mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								sdkOptions,
+								globalName: "$customName",
+							},
+						],
+					],
+				},
+			});
+
+			expect(wrapper.vm.__absmartlyGlobal).toBe("$customName");
+			expect(wrapper.vm.$customName).toBeInstanceOf(Context);
+
+			done();
+		});
+
+		it("should use default global name $absmartly", (done) => {
+			const wrapper = mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								sdkOptions,
+							},
+						],
+					],
+				},
+			});
+
+			expect(wrapper.vm.__absmartlyGlobal).toBe("$absmartly");
+
+			done();
+		});
+	});
+
+	describe("Context Instance", () => {
+		it("should use existing Context instance directly", (done) => {
+			const existingContext = new Context();
+			const wrapper = mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								context: existingContext,
+							},
+						],
+					],
+				},
+			});
+
+			expect(SDK).not.toHaveBeenCalled();
+			expect(wrapper.vm.$absmartly).toBe(existingContext);
+
+			done();
+		});
+
+		it("should call attributes on existing context when provided", (done) => {
+			const existingContext = new Context();
+			mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								context: existingContext,
+								attributes: { key: "value" },
+							},
+						],
+					],
+				},
+			});
+
+			expect(existingContext.attributes).toHaveBeenCalledWith({ key: "value" });
+
+			done();
+		});
+
+		it("should call overrides on existing context when provided", (done) => {
+			const existingContext = new Context();
+			mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								context: existingContext,
+								overrides: { exp1: 1 },
+							},
+						],
+					],
+				},
+			});
+
+			expect(existingContext.overrides).toHaveBeenCalledWith({ exp1: 1 });
+
+			done();
+		});
+	});
+
+	describe("SDK Data Option", () => {
+		it("should use createContextWith when data is provided", (done) => {
+			const testData = { experiments: [] };
+			mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								sdkOptions,
+								data: testData,
+							},
+						],
+					],
+				},
+			});
+
+			expect(mockCreateContextWith).toHaveBeenCalledTimes(1);
+			expect(mockCreateContext).not.toHaveBeenCalled();
+
+			done();
+		});
+
+		it("should use createContext when data is not provided", (done) => {
+			mount(Component, {
+				global: {
+					plugins: [
+						[
+							ABSmartly,
+							{
+								sdkOptions,
+							},
+						],
+					],
+				},
+			});
+
+			expect(mockCreateContext).toHaveBeenCalledTimes(1);
+			expect(mockCreateContextWith).not.toHaveBeenCalled();
+
+			done();
+		});
+	});
 });
