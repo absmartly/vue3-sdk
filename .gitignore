@@ -2,3 +2,8 @@ coverage
 node_modules
 .idea
 dist/
+
+.claude/
+.DS_Store
+AUDIT_REPORT.md
+FIXES_IMPLEMENTED.md

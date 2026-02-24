@@ -4,7 +4,7 @@ import HelloWorld from "./components/HelloWorld.vue";
 
 const $absmartly = inject("$absmartly");
 $absmartly.track("payment", {
-	amount: Math.floor(Math.random * 10000),
+	amount: Math.floor(Math.random() * 10000),
 });
 </script>
 
