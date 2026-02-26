@@ -123,21 +123,18 @@ app.use(absmartly.ABSmartlyVue, {
 
 ### Asynchronously
 
-In Vue 3 components using the Composition API, you can access the context asynchronously:
+In Vue 3 components using the Composition API, you can access the context asynchronously with the `useABSmartly()` composable:
 
 ```vue
 <script setup>
-import { getCurrentInstance, onMounted } from 'vue';
+import { watch } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { context, ready } = useABSmartly();
 
-onMounted(async () => {
-  try {
-    await absmartly.ready();
+watch(ready, (isReady) => {
+  if (isReady) {
     console.log('ABSmartly Context ready!');
-  } catch (error) {
-    console.error('ABSmartly initialization error:', error);
   }
 });
 </script>
@@ -191,14 +188,13 @@ Alternatively, call the `refresh()` method manually in your components:
 
 ```vue
 <script setup>
-import { getCurrentInstance } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { context } = useABSmartly();
 
 const refreshExperiments = async () => {
   try {
-    await absmartly.refresh();
+    await context.refresh();
     console.log('Experiments refreshed');
   } catch (error) {
     console.error('Refresh error:', error);
@@ -215,13 +211,12 @@ You can add additional units to a context dynamically, for example when a user l
 
 ```vue
 <script setup>
-import { getCurrentInstance } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { context } = useABSmartly();
 
 const onUserLogin = (userId) => {
-  absmartly.setUnit('user_id', userId);
+  context.setUnit('user_id', userId);
 };
 </script>
 ```
@@ -296,21 +291,21 @@ import MySpinner from './MySpinner.vue';
 </template>
 ```
 
-#### Using the Composition API
+#### Using the `useABSmartly()` Composable
 
-You can also access treatments directly using Vue 3's Composition API:
+The `useABSmartly()` composable provides clean Composition API access to experiments. It returns reactive refs that automatically update when the context becomes ready.
 
 ```vue
 <script setup>
-import { computed, getCurrentInstance } from 'vue';
+import { computed } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { treatment, ready } = useABSmartly();
 
-const treatment = computed(() => absmartly.treatment('exp_test_experiment'));
+const variant = treatment('exp_test_experiment');
 const buttonColor = computed(() => {
-  if (treatment.value === 0) return 'red';
-  if (treatment.value === 1) return 'green';
+  if (variant.value === 0) return 'red';
+  if (variant.value === 1) return 'green';
   return 'blue';
 });
 </script>
@@ -322,20 +317,29 @@ const buttonColor = computed(() => {
 </template>
 ```
 
+**Returned values:**
+
+| Property        | Type                                       | Description                                                            |
+| :-------------- | :----------------------------------------- | :--------------------------------------------------------------------- |
+| `context`       | `Context`                                  | The ABSmartly context instance for direct access.                      |
+| `ready`         | `ComputedRef<boolean>`                     | Reactive ref that is `true` when the context is ready.                 |
+| `failed`        | `ComputedRef<boolean>`                     | Reactive ref that is `true` when the context has failed.               |
+| `treatment`     | `(name: string) => ComputedRef<number>`    | Returns a reactive treatment value (defaults to `0` before ready).     |
+| `variableValue` | `(key: string, defaultValue) => ComputedRef` | Returns a reactive variable value (defaults to `defaultValue` before ready). |
+| `peek`          | `(name: string) => ComputedRef<number>`    | Like `treatment()` but without triggering an exposure.                 |
+| `track`         | `(goalName: string, properties?) => void`  | Tracks a goal event.                                                   |
+
 ### Treatment Variables
 
 Treatment variables allow you to configure different values for each variant. When creating an experiment on the A/B Smartly Web Console, you can assign each variant a set of variables.
 
 ```vue
 <script setup>
-import { computed, getCurrentInstance } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { variableValue } = useABSmartly();
 
-const buttonColor = computed(() =>
-  absmartly.variableValue('button.color', 'red')
-);
+const buttonColor = variableValue('button.color', 'red');
 </script>
 
 <template>
@@ -347,20 +351,24 @@ const buttonColor = computed(() =>
 
 ### Peek at Treatment Variants
 
-Although generally not recommended, it is sometimes necessary to peek at a treatment without triggering an exposure. The A/B Smartly SDK provides a `peek()` method for that.
+Although generally not recommended, it is sometimes necessary to peek at a treatment without triggering an exposure. The `useABSmartly()` composable provides a reactive `peek()` method for that.
 
 ```vue
 <script setup>
-import { onMounted, getCurrentInstance } from 'vue';
+import { watch } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { peek, ready } = useABSmartly();
 
-onMounted(() => {
-  if (absmartly.peek('exp_test_experiment') === 0) {
-    console.log('User is in control group (variant 0)');
-  } else {
-    console.log('User is in treatment group');
+const variant = peek('exp_test_experiment');
+
+watch(ready, (isReady) => {
+  if (isReady) {
+    if (variant.value === 0) {
+      console.log('User is in control group (variant 0)');
+    } else {
+      console.log('User is in treatment group');
+    }
   }
 });
 </script>
@@ -394,15 +402,15 @@ app.use(absmartly.ABSmartlyVue, {
 
 ```vue
 <script setup>
-import { onMounted, getCurrentInstance } from 'vue';
+import { onMounted } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { context } = useABSmartly();
 
 onMounted(() => {
-  absmartly.override('exp_test_experiment', 1);
+  context.override('exp_test_experiment', 1);
 
-  absmartly.overrides({
+  context.overrides({
     exp_test_experiment: 1,
     exp_another_experiment: 0,
   });
@@ -418,15 +426,15 @@ Attributes are used to pass metadata about the user and/or the request. They can
 
 ```vue
 <script setup>
-import { onMounted, getCurrentInstance } from 'vue';
+import { onMounted } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { context } = useABSmartly();
 
 onMounted(() => {
-  absmartly.attribute('user_agent', navigator.userAgent);
+  context.attribute('user_agent', navigator.userAgent);
 
-  absmartly.attributes({
+  context.attributes({
     customer_age: 'new_customer',
     subscription_tier: 'premium',
   });
@@ -440,16 +448,16 @@ Sometimes it may be necessary to override the automatic selection of a variant b
 
 ```vue
 <script setup>
-import { onMounted, getCurrentInstance } from 'vue';
+import { onMounted } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { context } = useABSmartly();
 
 onMounted(async () => {
   const chosenVariant = await fetchVariantFromAPI();
-  absmartly.customAssignment('experiment_name', chosenVariant);
+  context.customAssignment('experiment_name', chosenVariant);
 
-  absmartly.customAssignments({
+  context.customAssignments({
     experiment_name: 1,
     another_experiment_name: 0,
   });
@@ -463,13 +471,12 @@ Goals are created in the A/B Smartly web console. Use the `track()` method to re
 
 ```vue
 <script setup>
-import { getCurrentInstance } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { track } = useABSmartly();
 
 const handleBooking = () => {
-  absmartly.track('booking', {
+  track('booking', {
     price: 10000,
     category: '5 stars',
     free_cancellation: true,
@@ -491,13 +498,12 @@ Sometimes it is necessary to ensure all pending events have been published to th
 
 ```vue
 <script setup>
-import { getCurrentInstance } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { context } = useABSmartly();
 
 const navigateAway = async () => {
-  await absmartly.publish();
+  await context.publish();
   window.location = 'https://www.absmartly.com';
 };
 </script>
@@ -509,13 +515,12 @@ The `finalize()` method ensures all events have been published and "seals" the c
 
 ```vue
 <script setup>
-import { getCurrentInstance } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-const instance = getCurrentInstance();
-const absmartly = instance.appContext.config.globalProperties.$absmartly;
+const { context } = useABSmartly();
 
 const completeSession = async () => {
-  await absmartly.finalize();
+  await context.finalize();
   window.location = 'https://www.absmartly.com';
 };
 </script>
