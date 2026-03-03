@@ -2,7 +2,7 @@ import { mount } from "@vue/test-utils";
 import { defineComponent, h, nextTick } from "vue";
 import { Context, SDK } from "@absmartly/javascript-sdk";
 import ABSmartly from "@/plugin";
-import { useABSmartly, ABSMARTLY_INJECTION_KEY } from "@/useABSmartly";
+import { useABSmartly } from "@/useABSmartly";
 
 jest.mock("@absmartly/javascript-sdk");
 
