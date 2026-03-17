@@ -1,15 +1,12 @@
-# A/B Smartly SDK
+# ABsmartly Vue3 SDK
 
-A/B Smartly Vue3 SDK
+A/B Smartly Vue3 SDK for Vue 3 applications using the Composition API.
 
 ## Compatibility
 
-The A/B Smartly Vue3 SDK is compatible with Vue3 versions
-3.3.0 and later.
+The A/B Smartly Vue3 SDK is compatible with Vue 3 versions 3.3.0 and later.
 
-## Getting Started
-
-### Install the SDK
+## Installation
 
 **npm**
 
@@ -23,28 +20,31 @@ You can include an optimized and pre-built package directly in your HTML code th
 
 Simply add the following code to your head section to include the latest published version.
 
-
 ```html
 <script src="https://unpkg.com/@absmartly/vue3-sdk"></script>
 ```
 
-## Import and Initialize the SDK
+## Getting Started
 
-Once the SDK is installed, it can be initialized in your project.
+Please follow the [installation](#installation) instructions before trying the following code.
+
+### Initialization
+
+This example assumes an API Key, an Application, and an Environment have been created in the A/B Smartly web console.
 
 ```javascript
-const absmartly = require('@absmartly/vue3-sdk');
-// OR with ES6 modules:
+import { createApp } from 'vue';
 import absmartly from '@absmartly/vue3-sdk';
+import App from './App.vue';
 
-// create vue app ...
+const app = createApp(App);
 
 app.use(absmartly.ABSmartlyVue, {
   sdkOptions: {
-    endpoint: 'https://sandbox-api.absmartly.com/v1',
-    apiKey: ABSMARTLY_API_KEY,
-    environment: "production",
-    application: "website",
+    endpoint: 'https://your-company.absmartly.io/v1',
+    apiKey: 'YOUR-API-KEY',
+    environment: 'production',
+    application: 'website',
   },
   context: {
     units: {
@@ -59,291 +59,338 @@ app.use(absmartly.ABSmartlyVue, {
   }
 });
 
+app.mount('#app');
 ```
 
-**SDK Options**
-
-| Config      | Type                                 | Required? |                 Default                 | Description                                                                                                                                                                   |
-| :---------- | :----------------------------------- | :-------: | :-------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| endpoint    | `string`                             |  &#9989;  |               `undefined`               | The URL to your API endpoint. Most commonly `"your-company.absmartly.io"`                                                                                                     |
-| apiKey      | `string`                             |  &#9989;  |               `undefined`               | Your API key which can be found on the Web Console.                                                                                                                           |
-| environment | `"production"` or `"development"`    |  &#9989;  |               `undefined`               | The environment of the platform where the SDK is installed. Environments are created on the Web Console and should match the available environments in your infrastructure.   |
-| application | `string`                             |  &#9989;  |               `undefined`               | The name of the application where the SDK is installed. Applications are created on the Web Console and should match the applications where your experiments will be running. |
-| retries     | `number`                             | &#10060;  |                   `5`                   | The number of retries before the SDK stops trying to connect.                                                                                                                 |
-| timeout     | `number`                             | &#10060;  |                 `3000`                  | An amount of time, in milliseconds, before the SDK will stop trying to connect.                                                                                               |
-| eventLogger | `(context, eventName, data) => void` | &#10060;  | See "Using a Custom Event Logger" below | A callback function which runs after SDK events.                                                                                                                              |
-
-### Using a Custom Event Logger
-
-The A/B Smartly SDK can be instantiated with an event logger used for all
-contexts. In addition, an event logger can be specified when creating a
-particular context, in the `context`.
+#### With Optional Parameters
 
 ```javascript
 app.use(absmartly.ABSmartlyVue, {
   sdkOptions: {
-    endpoint: "https://sandbox-api.absmartly.com/v1",
-    apiKey: ABSMARTLY_API_KEY,
-    environment: "production",
-    application: "website",
-    eventLogger: (context, eventName, data) => {
-      if (eventName == "error") {
-        console.error(data);
-      }
-    }
-  }
-});
-```
-
-The data parameter depends on the type of event. Currently, the SDK logs the
-following events:
-
-| eventName    | when                                                    | data                                         |
-| ------------ | ------------------------------------------------------- | -------------------------------------------- |
-| `"error"`    | `Context` receives an error                             | error object thrown                          |
-| `"ready"`    | `Context` turns ready                                   | data used to initialize the context          |
-| `"refresh"`  | `Context.refresh()` method succeeds                     | data used to refresh the context             |
-| `"publish"`  | `Context.publish()` method succeeds                     | data sent to the A/B Smartly event collector |
-| `"exposure"` | `Context.treatment()` method succeeds on first exposure | exposure data enqueued for publishing        |
-| `"goal"`     | `Context.track()` method succeeds                       | goal data enqueued for publishing            |
-| `"finalize"` | `Context.finalize()` method succeeds the first time     | undefined                                    |
-
-## Create a New Context Request
-
-**Synchronously**
-
-```javascript
-
-app.use(absmartly.ABSmartlyVue, {
-  sdkOptions: {
-    endpoint: 'https://sandbox-api.absmartly.com/v1',
-    apiKey: ABSMARTLY_API_KEY,
-    environment: "production",
-    application: "website",
+    endpoint: 'https://your-company.absmartly.io/v1',
+    apiKey: 'YOUR-API-KEY',
+    environment: 'production',
+    application: 'website',
+    retries: 3,
+    timeout: 5000,
   },
   context: {
     units: {
       session_id: '5ebf06d8cb5d8137290c4abb64155584fbdb64d8',
     },
   },
-  attributes: {
-    user_agent: navigator.userAgent
+});
+```
+
+**SDK Options**
+
+| Config      | Type                                 | Required? | Default     | Description                                                                                                                                                                   |
+| :---------- | :----------------------------------- | :-------: | :---------: | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| endpoint    | `string`                             |  &#9989;  | `undefined` | The URL to your API endpoint. Most commonly `"https://your-company.absmartly.io/v1"`                                                                                         |
+| apiKey      | `string`                             |  &#9989;  | `undefined` | Your API key which can be found on the Web Console.                                                                                                                           |
+| environment | `string`                             |  &#9989;  | `undefined` | The environment of the platform where the SDK is installed. Environments are created on the Web Console and should match the available environments in your infrastructure.   |
+| application | `string`                             |  &#9989;  | `undefined` | The name of the application where the SDK is installed. Applications are created on the Web Console and should match the applications where your experiments will be running. |
+| retries     | `number`                             | &#10060;  | `5`         | The number of retries before the SDK stops trying to connect.                                                                                                                 |
+| timeout     | `number`                             | &#10060;  | `3000`      | Connection timeout in milliseconds.                                                                                                                                           |
+| eventLogger | `(context, eventName, data) => void` | &#10060;  | `null`      | A callback function which runs after SDK events.                                                                                                                              |
+
+## Creating a New Context
+
+### Synchronously
+
+The context is created when you initialize the Vue plugin. The SDK will automatically handle the context initialization.
+
+```javascript
+import { createApp } from 'vue';
+import absmartly from '@absmartly/vue3-sdk';
+
+const app = createApp(App);
+
+app.use(absmartly.ABSmartlyVue, {
+  sdkOptions: {
+    endpoint: 'https://your-company.absmartly.io/v1',
+    apiKey: 'YOUR-API-KEY',
+    environment: 'production',
+    application: 'website',
   },
-});
-
-```
-
-**Asynchronously**
-
-```
-Creating a context request asynchronously
-```
-
-**With Prefetched Data**
-
-```javascript
-// somewhere in your application initialization code, before mounting your Vue application
-app.use(absmartly.ABSmartlyVue, {
-    sdkOptions: {
-        endpoint: 'https://sandbox-api.absmartly.com/v1',
-        apiKey: ABSMARTLY_API_KEY,
-        environment: "production",
-        application: "website",
-    },
-    context: {
-        units: {
-            session_id: '5ebf06d8cb5d8137290c4abb64155584fbdb64d8',
-        },
-    },
-    attributes: {
-        user_agent: navigator.userAgent
-    },
-    data: prefetchedContext, // assuming prefectedContext has been inject
-});
-
-```
-
-**Refreshing the Context with Fresh Experiment Data**
-
-For long-running contexts, the context is usually created once when the
-application is first started. However, any experiments being tracked in your
-production code, but started after the context was created, will not be
-triggered. To mitigate this, we can use the `refreshInterval`
-option on the context config.
-
-```javascript
-app.use(absmartly.ABSmartlyVue, {
-  /* ... */
   context: {
-    units: { session_id: "5ebf06d8cb5d8137290c4abb64155584fbdb64d8" },
-    refreshInterval: 5 * 60 * 1000,
+    units: {
+      session_id: '5ebf06d8cb5d8137290c4abb64155584fbdb64d8',
+    },
   },
-  /* ... */
 });
-
 ```
 
-Alternatively, the `refresh()` method can be called manually. The
-`refresh()` method pulls updated experiment data from the A/B
-Smartly collector and will trigger recently started experiments when
-`treatment()` is called again.
+### Asynchronously
 
-```javascript
-setTimeout(async () => {
-  try {
-    this.$absmartly.refresh();
-  } catch (error) {
-    console.error(error);
+In Vue 3 components using the Composition API, you can access the context asynchronously with the `useABSmartly()` composable:
+
+```vue
+<script setup>
+import { watch } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { context, ready } = useABSmartly();
+
+watch(ready, (isReady) => {
+  if (isReady) {
+    console.log('ABSmartly Context ready!');
   }
-}, 5 * 60 * 1000);
+});
+</script>
 ```
 
-[//]: # ()
-[//]: # (**Setting Extra Units**)
+### With Pre-fetched Data
 
-[//]: # ()
-[//]: # (You can add additional units to a context by calling the `unit&#40;&#41;` or)
+When doing full-stack experimentation, you can create the context on the server-side and pass the data to the client to avoid an additional round-trip.
 
-[//]: # (`units&#40;&#41;` methods. These methods may be used, for example, when a user)
+```javascript
+const contextData = await fetchContextData();
 
-[//]: # (logs in to your application and you want to use the new unit type in the)
-
-[//]: # (context.)
-
-[//]: # ()
-[//]: # (Please note, you cannot override an already set unit type as that would be)
-
-[//]: # (a change of identity and would throw an exception. In this case, you must)
-
-[//]: # (create a new context instead. The `unit&#40;&#41;` and)
-
-[//]: # (`units&#40;&#41;` methods can be called before the context is ready.)
-
-[//]: # ()
-[//]: # (```)
-
-[//]: # (Using the setUnit&#40;&#41; and setUnits methods.)
-
-[//]: # (```)
-
-## Basic Usage
-
-### Selecting A Treatment
-The preferred method to select a treatment is using the Treatment component with a named and scoped slot per treatment.
-Example using the treatment alias
-```vue
-<treatment name="exp_test_experiment">
-    <template #A>
-        <my-button></my-button>
-    </template>
-    <template #B="{ config }">
-        <my-button :color="config.color"></my-button>
-    </template>
-    <template #loading>
-        <my-spinner></my-spinner>
-    </template>
-</treatment>
-```
-
-Example using the treatment index
-```vue
-<treatment name="exp_test_experiment">
-    <template #0>
-        <my-button></my-button>
-    </template>
-    <template #1="{ config }">
-        <my-button :color="config.color"></my-button>
-    </template>
-    <template #2="{ config }">
-        <my-other-button :color="config.color"></my-other-button>
-    </template>
-    <template #loading>
-        <my-spinner></my-spinner>
-    </template>
-</treatment>
-```
-
-Example using only the default slot
-```vue
-<treatment name="exp_test_experiment">
-    <template #default="{ config, treatment, ready }">
-        <template v-if="ready">
-            <my-button v-if="treatment == 0"></my-button>
-            <my-button v-else-if="treatment == 1" :color="config.color"></my-button>
-            <my-other-button v-else-if="treatment == 2" :color="config.color"></my-other-button>
-        </template>
-        <template v-else><my-spinner></my-spinner></template>
-    </template>
-</treatment>
-```
-The scoped slot properties contain information about the A/B Smartly context and the selected treatment:
-```json
-{
-  "treatment": 1,
-  "config": {
-    "color": "red"
+app.use(absmartly.ABSmartlyVue, {
+  sdkOptions: {
+    endpoint: 'https://your-company.absmartly.io/v1',
+    apiKey: 'YOUR-API-KEY',
+    environment: 'production',
+    application: 'website',
   },
-  "ready": true,
-  "failed": false
-}
+  context: {
+    units: {
+      session_id: '5ebf06d8cb5d8137290c4abb64155584fbdb64d8',
+    },
+  },
+  data: contextData,
+});
 ```
 
-If the experiment is not running, or the context creation failed, the slot will be rendered with the following properties:
-```json
-{
-  "treatment": 0,
-  "config": {},
-  "ready": true,
-  "failed": false
-}
-```
-Treatment variables are a powerful tool that can be used to automate your experiments. When creating an experiment on your A/B Smartly Web Console, you can give each variant a set of variables. You can then use your context to pull the values of these variables into your code.
+### Refreshing the Context with Fresh Experiment Data
 
-For example, let's say you have an experiment to find out what color of button generates the most clicks on your homepage. In this experiment, you have two variants - *Variant 1* and *Variant 2*. On both of these variants, you have assigned a variable:
-
-- Variant 1: `{ "button.color": "green" }`
-- Variant 2: `{ "button.color": "blue" }`
-And you wish for the control group ***(Variant 0)*** to have `{ "button.color": red }`.
-
-
-### Treatment Variables
-
-```javascript
-const defaultButtonColorValue = "red";
-
-const buttonColor = this.$absmartly.variableValue(
-  "button.color",
-  defaultButtonColorValue
-);
-```
-
-### Peek at Treatment Variants
-
-Although generally not recommended, it is sometimes necessary to peek at
-a treatment without triggering an exposure. The A/B Smartly
-SDK provides a `peek()` method for that.
-
-```javascript
-if (this.$absmartly.peek("exp_test_experiment") == 0) {
-  // user is in control group (variant 0)
-} else {
-  // user is in treatment group
-}
-```
-
-### Overriding Treatment Variants
-
-During development, for example, it is useful to force a treatment for an
-experiment. This can be achieved with the `override()` and/or `overrides()`
-methods. These methods can be called before the context is ready.
+For long-running single-page applications, the context is usually created once when the application first loads. However, any experiments started after the context was created will not be triggered. To mitigate this, use the `refreshInterval` option in `contextOptions`.
 
 ```javascript
 app.use(absmartly.ABSmartlyVue, {
   sdkOptions: {
-    /* ... */
+    endpoint: 'https://your-company.absmartly.io/v1',
+    apiKey: 'YOUR-API-KEY',
+    environment: 'production',
+    application: 'website',
   },
   context: {
-    /* ... */
+    units: { session_id: '5ebf06d8cb5d8137290c4abb64155584fbdb64d8' },
+  },
+  contextOptions: {
+    refreshPeriod: 5 * 60 * 1000,
+  },
+});
+```
+
+Alternatively, call the `refresh()` method manually in your components:
+
+```vue
+<script setup>
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { context } = useABSmartly();
+
+const refreshExperiments = async () => {
+  try {
+    await context.refresh();
+    console.log('Experiments refreshed');
+  } catch (error) {
+    console.error('Refresh error:', error);
+  }
+};
+</script>
+```
+
+### Setting Extra Units
+
+You can add additional units to a context dynamically, for example when a user logs in.
+
+**Note:** You cannot override an already set unit type as that would be a change of identity. In this case, you must create a new context instead.
+
+```vue
+<script setup>
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { context } = useABSmartly();
+
+const onUserLogin = (userId) => {
+  context.setUnit('user_id', userId);
+};
+</script>
+```
+
+## Basic Usage
+
+### Selecting a Treatment
+
+The Vue3 SDK provides multiple ways to select treatments in your components.
+
+#### Using the Treatment Component (Recommended)
+
+The preferred method is using the `<treatment>` component with named slots for each variant.
+
+**Example using treatment alias (A, B, C...):**
+
+```vue
+<template>
+  <treatment name="exp_test_experiment">
+    <template #A>
+      <MyButton />
+    </template>
+    <template #B="{ config }">
+      <MyButton :color="config.color" />
+    </template>
+    <template #loading>
+      <MySpinner />
+    </template>
+  </treatment>
+</template>
+
+<script setup>
+import { Treatment } from '@absmartly/vue3-sdk';
+import MyButton from './MyButton.vue';
+import MySpinner from './MySpinner.vue';
+</script>
+```
+
+**Example using treatment index (0, 1, 2...):**
+
+```vue
+<template>
+  <treatment name="exp_test_experiment">
+    <template #0>
+      <MyButton />
+    </template>
+    <template #1="{ config }">
+      <MyButton :color="config.color" />
+    </template>
+    <template #loading>
+      <MySpinner />
+    </template>
+  </treatment>
+</template>
+```
+
+**Example using the default slot:**
+
+```vue
+<template>
+  <treatment name="exp_test_experiment">
+    <template #default="{ config, treatment, ready }">
+      <template v-if="ready">
+        <MyButton v-if="treatment === 0" />
+        <MyButton v-else :color="config.color" />
+      </template>
+      <template v-else>
+        <MySpinner />
+      </template>
+    </template>
+  </treatment>
+</template>
+```
+
+#### Using the `useABSmartly()` Composable
+
+The `useABSmartly()` composable provides clean Composition API access to experiments. It returns reactive refs that automatically update when the context becomes ready.
+
+```vue
+<script setup>
+import { computed } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { treatment, ready } = useABSmartly();
+
+const variant = treatment('exp_test_experiment');
+const buttonColor = computed(() => {
+  if (variant.value === 0) return 'red';
+  if (variant.value === 1) return 'green';
+  return 'blue';
+});
+</script>
+
+<template>
+  <button :style="{ backgroundColor: buttonColor }">
+    Click Me
+  </button>
+</template>
+```
+
+**Returned values:**
+
+| Property        | Type                                       | Description                                                            |
+| :-------------- | :----------------------------------------- | :--------------------------------------------------------------------- |
+| `context`       | `Context`                                  | The ABSmartly context instance for direct access.                      |
+| `ready`         | `ComputedRef<boolean>`                     | Reactive ref that is `true` when the context is ready.                 |
+| `failed`        | `ComputedRef<boolean>`                     | Reactive ref that is `true` when the context has failed.               |
+| `treatment`     | `(name: string) => ComputedRef<number>`    | Returns a reactive treatment value (defaults to `0` before ready).     |
+| `variableValue` | `(key: string, defaultValue) => ComputedRef` | Returns a reactive variable value (defaults to `defaultValue` before ready). |
+| `peek`          | `(name: string) => ComputedRef<number>`    | Like `treatment()` but without triggering an exposure.                 |
+| `track`         | `(goalName: string, properties?) => void`  | Tracks a goal event.                                                   |
+
+### Treatment Variables
+
+Treatment variables allow you to configure different values for each variant. When creating an experiment on the A/B Smartly Web Console, you can assign each variant a set of variables.
+
+```vue
+<script setup>
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { variableValue } = useABSmartly();
+
+const buttonColor = variableValue('button.color', 'red');
+</script>
+
+<template>
+  <button :style="{ backgroundColor: buttonColor }">
+    Click Me
+  </button>
+</template>
+```
+
+### Peek at Treatment Variants
+
+Although generally not recommended, it is sometimes necessary to peek at a treatment without triggering an exposure. The `useABSmartly()` composable provides a reactive `peek()` method for that.
+
+```vue
+<script setup>
+import { watch } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { peek, ready } = useABSmartly();
+
+const variant = peek('exp_test_experiment');
+
+watch(ready, (isReady) => {
+  if (isReady) {
+    if (variant.value === 0) {
+      console.log('User is in control group (variant 0)');
+    } else {
+      console.log('User is in treatment group');
+    }
+  }
+});
+</script>
+```
+
+### Overriding Treatment Variants
+
+During development, it is useful to force a treatment for an experiment. This can be achieved with the `override()` and/or `overrides()` methods.
+The `override()` and `overrides()` methods can be called before the context is ready.
+
+**At Initialization:**
+
+```javascript
+app.use(absmartly.ABSmartlyVue, {
+  sdkOptions: {
+    endpoint: 'https://your-company.absmartly.io/v1',
+    apiKey: 'YOUR-API-KEY',
+    environment: 'development',
+    application: 'website',
+  },
+  context: {
+    units: { session_id: '5ebf06d8cb5d8137290c4abb64155584fbdb64d8' },
   },
   overrides: {
     exp_test_development: 1,
@@ -351,118 +398,193 @@ app.use(absmartly.ABSmartlyVue, {
 });
 ```
 
-#### With the override methods
-```javascript
-this.$absmartly.override("exp_test_experiment", 1); // force variant 1 of treatment
-this.$absmartly.overrides({
-  exp_test_experiment: 1,
-  exp_another_experiment: 0,
+**In Components:**
+
+```vue
+<script setup>
+import { onMounted } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { context } = useABSmartly();
+
+onMounted(() => {
+  context.override('exp_test_experiment', 1);
+
+  context.overrides({
+    exp_test_experiment: 1,
+    exp_another_experiment: 0,
+  });
 });
+</script>
 ```
 
 ## Advanced
 
 ### Context Attributes
 
-Attributes are used to pass meta-data about the user and/or the request.
-They can be used later in the Web Console to create segments or audiences.
-They can be set using the `attribute()` or `attributes()`
-methods, before or after the context is ready.
-
-```javascript
-this.$absmartly.attribute("user_agent", navigator.userAgent);
-
-this.$absmartly.attributes({
-  customer_age: "new_customer",
-});
-```
-
-Or directly in templates with the :attributes property of the Treatment component.
+Attributes are used to pass metadata about the user and/or the request. They can be used later in the Web Console to create segments or audiences. Attributes can be set before or after the context is ready.
 
 ```vue
-<treatment
-  name="exp_test_experiment"
-  :attributes="{ customer_age: 'returning' }"
->
-  <template #default="{ config, treatment, ready }">
-    <template v-if="ready">
-      <my-button v-if="treatment == 0"></my-button>
-      <my-button v-else-if="treatment == 1" :color="config.color"></my-button>
-      <my-other-button
-        v-else-if="treatment == 2"
-        :color="config.color"
-      ></my-other-button>
-    </template>
-    <template v-else><my-spinner></my-spinner></template>
-  </template>
-</treatment>
+<script setup>
+import { onMounted } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { context } = useABSmartly();
+
+onMounted(() => {
+  context.attribute('user_agent', navigator.userAgent);
+
+  context.attributes({
+    customer_age: 'new_customer',
+    subscription_tier: 'premium',
+  });
+});
+</script>
 ```
 
 ### Custom Assignments
 
-Sometimes it may be necessary to override the automatic selection of a
-variant. For example, if you wish to have your variant chosen based on
-data from an API call. This can be accomplished using the
-`customAssignment()` method.
+Sometimes it may be necessary to override the automatic selection of a variant based on external data, such as an API call.
 
-```javascript
-const chosenVariant = 1;
+```vue
+<script setup>
+import { onMounted } from 'vue';
+import { useABSmartly } from '@absmartly/vue3-sdk';
 
-this.$absmartly.customAssignment("experiment_name", chosenVariant);
-```
+const { context } = useABSmartly();
 
-If you are running multiple experiments and need to choose different
-custom assignments for each one, you can do so using the
-`customAssignments()` method.
+onMounted(async () => {
+  const chosenVariant = await fetchVariantFromAPI();
+  context.customAssignment('experiment_name', chosenVariant);
 
-```javascript
-const assignments = {
-  experiment_name: 1,
-  another_experiment_name: 0,
-  a_third_experiment_name: 2,
-};
-
-this.$absmartly.customAssignments(assignments);
-```
-
-### Publish
-
-Sometimes it is necessary to ensure all events have been published to the
-A/B Smartly collector, before proceeding. You can explicitly call the
-`publish()` method.
-
-```javascript
-await this.$absmartly.publish().then(() => {
-  window.location = "https://www.absmartly.com";
+  context.customAssignments({
+    experiment_name: 1,
+    another_experiment_name: 0,
+  });
 });
-```
-
-### Finalize
-
-The `finalize()` method will ensure all events have been
-published to the A/B Smartly collector, like `publish()`, and will also
-"seal" the context, throwing an error if any method that could generate
-an event is called.
-
-```javascript
-await this.$absmartly.finalize().then(() => {
-  window.location = "https://www.absmartly.com";
-});
+</script>
 ```
 
 ### Tracking Goals
-Use the `track()` method to record any actions that your customers perform. Each action is known as a goal and corresponds to a `goal_name` as defined in the Web Console. Calling `track()` through the SDKs is the easiest way of getting experimentation data into A/B Smartly and allows you to measure the impact of your experiments on your users' actions and metrics. You can also track goals through the Segment.io integration or by using enrichments to consume them from other event streams and/or databases. In the examples below you can see that the `track()` method can take up to two arguments. The proper data type and syntax for each are:
 
-- **goal_name**: The traffic type of the key in the `track()` call. The expected data type is `String`. You should only pass values that match the names of goals that you have defined in the Web Console, everything else will be ignored.
-- **properties** (Optional): An object of key value pairs that can be used to create extra metrics or to filter the goal.
+Goals are created in the A/B Smartly web console. Use the `track()` method to record user actions.
+
+```vue
+<script setup>
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { track } = useABSmartly();
+
+const handleBooking = () => {
+  track('booking', {
+    price: 10000,
+    category: '5 stars',
+    free_cancellation: true,
+    instance_id: 5350,
+  });
+};
+</script>
+
+<template>
+  <button @click="handleBooking">
+    Complete Booking
+  </button>
+</template>
+```
+
+### Publishing Pending Data
+
+Sometimes it is necessary to ensure all pending events have been published to the A/B Smartly collector before proceeding. You can explicitly call the `publish()` method.
+
+```vue
+<script setup>
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { context } = useABSmartly();
+
+const navigateAway = async () => {
+  await context.publish();
+  window.location = 'https://www.absmartly.com';
+};
+</script>
+```
+
+### Finalizing
+
+The `finalize()` method ensures all events have been published and "seals" the context, preventing any further events from being generated.
+
+```vue
+<script setup>
+import { useABSmartly } from '@absmartly/vue3-sdk';
+
+const { context } = useABSmartly();
+
+const completeSession = async () => {
+  await context.finalize();
+  window.location = 'https://www.absmartly.com';
+};
+</script>
+```
+
+### Custom Event Logger
+
+The A/B Smartly SDK can be instantiated with an event logger used for all contexts. The event logger is a callback function that runs after SDK events.
 
 ```javascript
-var properties = {
-  price: 10000,
-  category: "5 stars",
-  free_cancellation: true,
-  instance_id: 5350,
-};
-
-this.$absmartly.track("booking", properties);
+app.use(absmartly.ABSmartlyVue, {
+  sdkOptions: {
+    endpoint: 'https://your-company.absmartly.io/v1',
+    apiKey: 'YOUR-API-KEY',
+    environment: 'production',
+    application: 'website',
+    eventLogger: (context, eventName, data) => {
+      switch (eventName) {
+        case 'error':
+          console.error('ABSmartly Error:', data);
+          break;
+        case 'ready':
+          console.log('ABSmartly Context Ready');
+          break;
+        case 'exposure':
+          console.log('Experiment Exposure:', data);
+          break;
+        case 'goal':
+          console.log('Goal Tracked:', data);
+          break;
+      }
+    }
+  }
+});
 ```
+
+**Event Types**
+
+| eventName    | When                                                    | Data                                         |
+| ------------ | ------------------------------------------------------- | -------------------------------------------- |
+| `"error"`    | `Context` receives an error                             | Error object thrown                          |
+| `"ready"`    | `Context` turns ready                                   | Data used to initialize the context          |
+| `"refresh"`  | `Context.refresh()` method succeeds                     | Data used to refresh the context             |
+| `"publish"`  | `Context.publish()` method succeeds                     | Data sent to the A/B Smartly event collector |
+| `"exposure"` | `Context.treatment()` method succeeds on first exposure | Exposure data enqueued for publishing        |
+| `"goal"`     | `Context.track()` method succeeds                       | Goal data enqueued for publishing            |
+| `"finalize"` | `Context.finalize()` method succeeds the first time     | `undefined`                                  |
+
+## About A/B Smartly
+
+**A/B Smartly** is the leading provider of state-of-the-art, on-premises, full-stack experimentation platforms for engineering and product teams that want to confidently deploy features as fast as they can develop them.
+A/B Smartly's real-time analytics helps engineering and product teams ensure that new features will improve the customer experience without breaking or degrading performance and/or business metrics.
+
+### Have a look at our growing list of clients and SDKs:
+- [JavaScript SDK](https://www.github.com/absmartly/javascript-sdk)
+- [Java SDK](https://www.github.com/absmartly/java-sdk)
+- [PHP SDK](https://www.github.com/absmartly/php-sdk)
+- [Swift SDK](https://www.github.com/absmartly/swift-sdk)
+- [Vue2 SDK](https://www.github.com/absmartly/vue2-sdk)
+- [Vue3 SDK](https://www.github.com/absmartly/vue3-sdk) (this package)
+- [React SDK](https://www.github.com/absmartly/react-sdk)
+- [Python3 SDK](https://www.github.com/absmartly/python3-sdk)
+- [Go SDK](https://www.github.com/absmartly/go-sdk)
+- [Ruby SDK](https://www.github.com/absmartly/ruby-sdk)
+- [.NET SDK](https://www.github.com/absmartly/dotnet-sdk)
+- [Dart SDK](https://www.github.com/absmartly/dart-sdk)
+- [Flutter SDK](https://www.github.com/absmartly/flutter-sdk)
