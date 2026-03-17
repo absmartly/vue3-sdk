@@ -50,10 +50,22 @@ export default {
 		updateState(context);
 
 		if (!context.isReady()) {
-			context.ready().then(() => {
-				updateState(context);
-			});
+			context
+				.ready()
+				.then(() => {
+					if (this._isDestroyed || this._isBeingDestroyed || this.$.isUnmounted) return;
+					updateState(context);
+				})
+				.catch((err) => {
+					if (this._isDestroyed || this._isBeingDestroyed || this.$.isUnmounted) return;
+					this.failed = true;
+					console.error("ABSmartly context failed to initialize:", err);
+				});
 		}
+	},
+
+	beforeUnmount() {
+		this._isBeingDestroyed = true;
 	},
 
 	render() {
@@ -68,7 +80,7 @@ export default {
 
 		const props = this.ready
 			? {
-					treatment: this.treatment || 0,
+					treatment: this.treatment ?? 0,
 					ready: this.ready,
 					failed: this.failed,
 			  }

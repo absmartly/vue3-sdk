@@ -2,7 +2,7 @@ import { mount } from "@vue/test-utils";
 import { defineComponent, h, nextTick } from "vue";
 import { Context, SDK } from "@absmartly/javascript-sdk";
 import ABSmartly from "@/plugin";
-import { useABSmartly } from "@/useABSmartly";
+import { useABSmartly, ABSMARTLY_INJECTION_KEY } from "@/useABSmartly";
 
 jest.mock("@absmartly/javascript-sdk");
 
@@ -322,6 +322,173 @@ describe("useABSmartly", () => {
 			expect(variantA.value).toBe(0);
 			expect(variantB.value).toBe(1);
 			expect(variantC.value).toBe(2);
+		});
+	});
+
+	describe("error handling (.catch on context.ready())", () => {
+		beforeEach(() => {
+			mockIsReady.mockReturnValue(false);
+		});
+
+		it("should set failed to true when context.ready() rejects", async () => {
+			let readyReject;
+			mockReady.mockReturnValue(
+				new Promise((_, reject) => {
+					readyReject = reject;
+				})
+			);
+
+			const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+			const { result } = mountWithComposable(() => useABSmartly());
+			expect(result.failed.value).toBe(false);
+
+			readyReject(new Error("network failure"));
+			await nextTick();
+			await nextTick();
+
+			expect(result.failed.value).toBe(true);
+			expect(consoleErrorSpy).toHaveBeenCalledWith(
+				"ABSmartly context failed to initialize:",
+				expect.any(Error)
+			);
+
+			consoleErrorSpy.mockRestore();
+		});
+
+		it("should not update state after rejection if component is unmounted", async () => {
+			let readyReject;
+			mockReady.mockReturnValue(
+				new Promise((_, reject) => {
+					readyReject = reject;
+				})
+			);
+
+			const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+			const { wrapper, result } = mountWithComposable(() => useABSmartly());
+			expect(result.failed.value).toBe(false);
+
+			wrapper.unmount();
+
+			readyReject(new Error("network failure"));
+			await nextTick();
+			await nextTick();
+
+			expect(result.failed.value).toBe(false);
+
+			consoleErrorSpy.mockRestore();
+		});
+	});
+
+	describe("unmount guard on context.ready()", () => {
+		beforeEach(() => {
+			mockIsReady.mockReturnValue(false);
+		});
+
+		it("should not update ready/failed after component is unmounted", async () => {
+			const { wrapper, result } = mountWithComposable(() => useABSmartly());
+			expect(result.ready.value).toBe(false);
+
+			wrapper.unmount();
+
+			mockIsReady.mockReturnValue(true);
+			readyResolve();
+			await nextTick();
+			await nextTick();
+
+			expect(result.ready.value).toBe(false);
+			expect(result.failed.value).toBe(false);
+		});
+	});
+
+	describe("Symbol injection key", () => {
+		it("should export ABSMARTLY_INJECTION_KEY as a Symbol", () => {
+			expect(typeof ABSMARTLY_INJECTION_KEY).toBe("symbol");
+			expect(ABSMARTLY_INJECTION_KEY.toString()).toContain("absmartly");
+		});
+	});
+
+	describe("track ready guard", () => {
+		beforeEach(() => {
+			mockIsReady.mockReturnValue(false);
+		});
+
+		it("should warn when tracking before context is ready", () => {
+			const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+			const { result } = mountWithComposable(() => useABSmartly());
+			result.track("click");
+
+			expect(consoleWarnSpy).toHaveBeenCalledWith("ABSmartly: tracking before context ready");
+			expect(mockTrack).toHaveBeenCalledWith("click", undefined);
+
+			consoleWarnSpy.mockRestore();
+		});
+
+		it("should not warn when tracking after context is ready", () => {
+			mockIsReady.mockReturnValue(true);
+			const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+			const { result } = mountWithComposable(() => useABSmartly());
+			result.track("click");
+
+			expect(consoleWarnSpy).not.toHaveBeenCalled();
+			expect(mockTrack).toHaveBeenCalledWith("click", undefined);
+
+			consoleWarnSpy.mockRestore();
+		});
+	});
+
+	describe("readonly refs", () => {
+		it("should return ready as a readonly ref that warns on mutation", () => {
+			const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+			const { result } = mountWithComposable(() => useABSmartly());
+
+			result.ready.value = false;
+
+			expect(consoleWarnSpy).toHaveBeenCalled();
+			consoleWarnSpy.mockRestore();
+		});
+
+		it("should return failed as a readonly ref that warns on mutation", () => {
+			const consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+			const { result } = mountWithComposable(() => useABSmartly());
+
+			result.failed.value = true;
+
+			expect(consoleWarnSpy).toHaveBeenCalled();
+			consoleWarnSpy.mockRestore();
+		});
+	});
+
+	describe("treatment/peek memoization", () => {
+		it("should return the same computed ref for repeated treatment() calls with same name", () => {
+			const { result } = mountWithComposable(() => useABSmartly());
+			const ref1 = result.treatment("exp_a");
+			const ref2 = result.treatment("exp_a");
+			expect(ref1).toBe(ref2);
+		});
+
+		it("should return different computed refs for different treatment names", () => {
+			const { result } = mountWithComposable(() => useABSmartly());
+			const ref1 = result.treatment("exp_a");
+			const ref2 = result.treatment("exp_b");
+			expect(ref1).not.toBe(ref2);
+		});
+
+		it("should return the same computed ref for repeated peek() calls with same name", () => {
+			const { result } = mountWithComposable(() => useABSmartly());
+			const ref1 = result.peek("exp_a");
+			const ref2 = result.peek("exp_a");
+			expect(ref1).toBe(ref2);
+		});
+
+		it("should return different computed refs for different peek names", () => {
+			const { result } = mountWithComposable(() => useABSmartly());
+			const ref1 = result.peek("exp_a");
+			const ref2 = result.peek("exp_b");
+			expect(ref1).not.toBe(ref2);
 		});
 	});
 });

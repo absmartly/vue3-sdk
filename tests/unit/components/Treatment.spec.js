@@ -605,6 +605,87 @@ describe("Treatment.vue", () => {
 		});
 	});
 
+	describe("Error Handling - Promise Rejection", () => {
+		it("should set failed to true when context.ready() rejects", async () => {
+			const slotMock = jest.fn();
+			const loadingMock = jest.fn();
+
+			mocks.$absmartly.isReady.mockReturnValue(false);
+			mocks.$absmartly.isFailed.mockReturnValue(false);
+
+			let rejectReady;
+			const ready = new Promise((_, reject) => {
+				rejectReady = reject;
+			});
+			mocks.$absmartly.ready.mockReturnValue(ready);
+
+			const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+			const wrapper = mount(Treatment, {
+				props: {
+					name: "test_exp",
+				},
+				slots: {
+					default: slotMock,
+					loading: loadingMock,
+				},
+				global: {
+					mocks,
+				},
+				shallow: true,
+			});
+
+			expect(loadingMock).toHaveBeenCalledWith({
+				ready: false,
+				failed: false,
+			});
+
+			rejectReady(new Error("network error"));
+
+			await new Promise((r) => setTimeout(r, 10));
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.vm.failed).toBe(true);
+			expect(consoleErrorSpy).toHaveBeenCalledWith(
+				"ABSmartly context failed to initialize:",
+				expect.any(Error)
+			);
+
+			consoleErrorSpy.mockRestore();
+		});
+	});
+
+	describe("Nullish Coalescing", () => {
+		it("should use nullish coalescing so treatment 0 is passed correctly", (done) => {
+			const slotMock = jest.fn();
+
+			mocks.$absmartly.isReady.mockReturnValue(true);
+			mocks.$absmartly.isFailed.mockReturnValue(false);
+			mocks.$absmartly.treatment.mockReturnValue(0);
+
+			mount(Treatment, {
+				props: {
+					name: "test_exp",
+				},
+				slots: {
+					default: slotMock,
+				},
+				global: {
+					mocks,
+				},
+				shallow: true,
+			});
+
+			expect(slotMock).toHaveBeenCalledWith({
+				ready: true,
+				failed: false,
+				treatment: 0,
+			});
+
+			done();
+		});
+	});
+
 	describe("Attributes Handling", () => {
 		it("should handle empty attributes object", (done) => {
 			const slotMock = jest.fn();
