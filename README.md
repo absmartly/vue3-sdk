@@ -103,6 +103,7 @@ The context is created when you initialize the Vue plugin. The SDK will automati
 ```javascript
 import { createApp } from 'vue';
 import absmartly from '@absmartly/vue3-sdk';
+import App from './App.vue';
 
 const app = createApp(App);
 
@@ -165,7 +166,7 @@ app.use(absmartly.ABSmartlyVue, {
 
 ### Refreshing the Context with Fresh Experiment Data
 
-For long-running single-page applications, the context is usually created once when the application first loads. However, any experiments started after the context was created will not be triggered. To mitigate this, use the `refreshInterval` option in `contextOptions`.
+For long-running single-page applications, the context is usually created once when the application first loads. However, any experiments started after the context was created will not be triggered. To mitigate this, use the `refreshPeriod` option in `contextOptions`.
 
 ```javascript
 app.use(absmartly.ABSmartlyVue, {

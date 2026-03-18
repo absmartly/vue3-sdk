@@ -82,13 +82,14 @@ describe("useABSmartly", () => {
 			},
 		});
 
-		jest.spyOn(console, "warn").mockImplementation(() => {});
+		const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 
 		expect(() => {
 			mount(TestComponent);
 		}).toThrow(
 			"useABSmartly() requires the ABSmartlyVue plugin to be installed."
 		);
+		warnSpy.mockRestore();
 	});
 
 	it("should return context", () => {
@@ -343,6 +344,7 @@ describe("useABSmartly", () => {
 			const { result } = mountWithComposable(() => useABSmartly());
 			expect(result.failed.value).toBe(false);
 
+			mockIsFailed.mockReturnValue(true);
 			readyReject(new Error("network failure"));
 			await nextTick();
 			await nextTick();

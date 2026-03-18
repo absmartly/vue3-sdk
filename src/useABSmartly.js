@@ -23,15 +23,13 @@ export function useABSmartly() {
 	if (!ready.value) {
 		context
 			.ready()
-			.then(() => {
+			.catch((err) => {
+				console.error("ABSmartly context failed to initialize:", err);
+			})
+			.finally(() => {
 				if (disposed) return;
 				ready.value = context.isReady();
 				failed.value = context.isFailed();
-			})
-			.catch((err) => {
-				if (disposed) return;
-				failed.value = true;
-				console.error("ABSmartly context failed to initialize:", err);
 			});
 	}
 

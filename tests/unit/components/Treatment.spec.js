@@ -752,7 +752,7 @@ describe("Treatment.vue", () => {
 			mocks.$absmartly.isReady.mockReturnValue(false);
 			mocks.$absmartly.isFailed.mockReturnValue(false);
 
-			const ready = Promise.resolve(true);
+			const ready = new Promise(() => {});
 			mocks.$absmartly.ready.mockReturnValue(ready);
 
 			mount(Treatment, {
