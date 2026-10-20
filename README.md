@@ -323,8 +323,8 @@ const buttonColor = computed(() => {
 | Property        | Type                                       | Description                                                            |
 | :-------------- | :----------------------------------------- | :--------------------------------------------------------------------- |
 | `context`       | `Context`                                  | The ABSmartly context instance for direct access.                      |
-| `ready`         | `ComputedRef<boolean>`                     | Reactive ref that is `true` when the context is ready.                 |
-| `failed`        | `ComputedRef<boolean>`                     | Reactive ref that is `true` when the context has failed.               |
+| `ready`         | `Readonly<Ref<boolean>>`                   | Reactive ref that is `true` when the context is ready.                 |
+| `failed`        | `Readonly<Ref<boolean>>`                   | Reactive ref that is `true` when the context has failed.               |
 | `treatment`     | `(name: string) => ComputedRef<number>`    | Returns a reactive treatment value (defaults to `0` before ready).     |
 | `variableValue` | `(key: string, defaultValue) => ComputedRef` | Returns a reactive variable value (defaults to `defaultValue` before ready). |
 | `peek`          | `(name: string) => ComputedRef<number>`    | Like `treatment()` but without triggering an exposure.                 |

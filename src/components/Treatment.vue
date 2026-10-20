@@ -53,19 +53,15 @@ export default {
 			context
 				.ready()
 				.then(() => {
-					if (this._isDestroyed || this._isBeingDestroyed || this.$.isUnmounted) return;
+					if (this.$.isUnmounted) return;
 					updateState(context);
 				})
 				.catch((err) => {
-					if (this._isDestroyed || this._isBeingDestroyed || this.$.isUnmounted) return;
+					if (this.$.isUnmounted) return;
 					this.failed = true;
 					console.error("ABSmartly context failed to initialize:", err);
 				});
 		}
-	},
-
-	beforeUnmount() {
-		this._isBeingDestroyed = true;
 	},
 
 	render() {
