@@ -50,9 +50,21 @@ export default {
 		updateState(context);
 
 		if (!context.isReady()) {
-			context.ready().then(() => {
-				updateState(context);
-			});
+			// ready() never rejects: on init failure it resolves and the failure is
+			// reported through isFailed()/readyError(), which updateState reads.
+			context
+				.ready()
+				.then(() => {
+					if (this.$.isUnmounted) return;
+					updateState(context);
+					if (this.failed) {
+						console.error("ABsmartly context failed to initialize:", context.readyError?.());
+					}
+				})
+				.catch((err) => {
+					if (this.$.isUnmounted) return;
+					console.error("ABsmartly Treatment failed to update:", err);
+				});
 		}
 	},
 
@@ -68,7 +80,7 @@ export default {
 
 		const props = this.ready
 			? {
-					treatment: this.treatment || 0,
+					treatment: this.treatment ?? 0,
 					ready: this.ready,
 					failed: this.failed,
 			  }
