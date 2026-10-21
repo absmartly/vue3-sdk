@@ -325,10 +325,17 @@ const buttonColor = computed(() => {
 | `context`       | `Context`                                  | The ABSmartly context instance for direct access.                      |
 | `ready`         | `Readonly<Ref<boolean>>`                   | Reactive ref that is `true` when the context is ready.                 |
 | `failed`        | `Readonly<Ref<boolean>>`                   | Reactive ref that is `true` when the context has failed.               |
-| `treatment`     | `(name: string) => ComputedRef<number>`    | Returns a reactive treatment value (defaults to `0` before ready).     |
+| `treatment`     | `(name: string) => ComputedRef<number>`    | Returns a reactive treatment value (`0` before ready; never throws).   |
 | `variableValue` | `(key: string, defaultValue) => ComputedRef` | Returns a reactive variable value (defaults to `defaultValue` before ready). |
 | `peek`          | `(name: string) => ComputedRef<number>`    | Like `treatment()` but without triggering an exposure.                 |
 | `track`         | `(goalName: string, properties?) => void`  | Tracks a goal event.                                                   |
+
+> **Before the context is ready.** Unlike `context.treatment()` / `context.peek()` (which throw
+> "ABsmartly Context is not yet ready." before ready), the composable's `treatment()`, `peek()` and
+> `variableValue()` return computed refs that yield `0` / the default until `ready` is `true`, so
+> templates can render a loading state without a `try/catch`. No exposure is queued before ready.
+> If the context fails to initialize, `ready` and `failed` both become `true`, and the failure is
+> available from `context.readyError()` (`ready()` never rejects).
 
 ### Treatment Variables
 

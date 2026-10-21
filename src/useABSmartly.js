@@ -21,16 +21,16 @@ export function useABSmartly() {
 	});
 
 	if (!ready.value) {
-		context
-			.ready()
-			.catch((err) => {
-				console.error("ABSmartly context failed to initialize:", err);
-			})
-			.finally(() => {
-				if (disposed) return;
-				ready.value = context.isReady();
-				failed.value = context.isFailed();
-			});
+		// ready() never rejects: on init failure it resolves and the failure is
+		// reported through isFailed()/readyError().
+		context.ready().finally(() => {
+			if (disposed) return;
+			ready.value = context.isReady();
+			failed.value = context.isFailed();
+			if (failed.value) {
+				console.error("ABsmartly context failed to initialize:", context.readyError?.());
+			}
+		});
 	}
 
 	const treatmentCache = new Map();

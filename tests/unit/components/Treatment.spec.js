@@ -605,53 +605,48 @@ describe("Treatment.vue", () => {
 		});
 	});
 
-	describe("Error Handling - Promise Rejection", () => {
-		it("should set failed to true when context.ready() rejects", async () => {
+	describe("Error Handling - failed context (ready() resolves, failure is on isFailed())", () => {
+		it("should surface failed=true and log readyError() when ready() resolves for a failed context", async () => {
 			const slotMock = jest.fn();
 			const loadingMock = jest.fn();
+			const failure = new Error("network error");
 
 			mocks.$absmartly.isReady.mockReturnValue(false);
 			mocks.$absmartly.isFailed.mockReturnValue(false);
+			mocks.$absmartly.readyError = jest.fn().mockReturnValue(failure);
 
-			let rejectReady;
-			const ready = new Promise((_, reject) => {
-				rejectReady = reject;
-			});
-			mocks.$absmartly.ready.mockReturnValue(ready);
+			let resolveReady;
+			mocks.$absmartly.ready.mockReturnValue(
+				new Promise((resolve) => {
+					resolveReady = resolve;
+				})
+			);
+			mocks.$absmartly.treatment.mockReturnValue(0);
 
 			const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
 			const wrapper = mount(Treatment, {
-				props: {
-					name: "test_exp",
-				},
-				slots: {
-					default: slotMock,
-					loading: loadingMock,
-				},
-				global: {
-					mocks,
-				},
+				props: { name: "test_exp" },
+				slots: { default: slotMock, loading: loadingMock },
+				global: { mocks },
 				shallow: true,
 			});
 
-			expect(loadingMock).toHaveBeenCalledWith({
-				ready: false,
-				failed: false,
-			});
+			expect(loadingMock).toHaveBeenCalledWith({ ready: false, failed: false });
 
-			rejectReady(new Error("network error"));
+			// the JS SDK marks a failed context ready+failed and resolves ready()
+			mocks.$absmartly.isReady.mockReturnValue(true);
+			mocks.$absmartly.isFailed.mockReturnValue(true);
+			resolveReady(true);
 
 			await new Promise((r) => setTimeout(r, 10));
 			await wrapper.vm.$nextTick();
 
 			expect(wrapper.vm.failed).toBe(true);
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				"ABSmartly context failed to initialize:",
-				expect.any(Error)
-			);
+			expect(consoleErrorSpy).toHaveBeenCalledWith("ABsmartly context failed to initialize:", failure);
 
 			consoleErrorSpy.mockRestore();
+			delete mocks.$absmartly.readyError;
 		});
 	});
 

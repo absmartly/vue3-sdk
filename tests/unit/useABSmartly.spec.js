@@ -326,58 +326,60 @@ describe("useABSmartly", () => {
 		});
 	});
 
-	describe("error handling (.catch on context.ready())", () => {
+	describe("error handling (failure is read from isFailed()/readyError(), ready() never rejects)", () => {
 		beforeEach(() => {
 			mockIsReady.mockReturnValue(false);
 		});
 
-		it("should set failed to true when context.ready() rejects", async () => {
-			let readyReject;
+		it("should set failed to true when ready() resolves for a failed context", async () => {
+			let readyResolve2;
 			mockReady.mockReturnValue(
-				new Promise((_, reject) => {
-					readyReject = reject;
+				new Promise((resolve) => {
+					readyResolve2 = resolve;
 				})
 			);
+			const failure = new Error("network failure");
+			mockContext.readyError = jest.fn().mockReturnValue(failure);
 
 			const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
 			const { result } = mountWithComposable(() => useABSmartly());
 			expect(result.failed.value).toBe(false);
 
+			mockIsReady.mockReturnValue(true);
 			mockIsFailed.mockReturnValue(true);
-			readyReject(new Error("network failure"));
+			readyResolve2(true);
 			await nextTick();
 			await nextTick();
 
 			expect(result.failed.value).toBe(true);
-			expect(consoleErrorSpy).toHaveBeenCalledWith(
-				"ABSmartly context failed to initialize:",
-				expect.any(Error)
-			);
+			expect(result.ready.value).toBe(true);
+			expect(consoleErrorSpy).toHaveBeenCalledWith("ABsmartly context failed to initialize:", failure);
 
 			consoleErrorSpy.mockRestore();
 		});
 
-		it("should not update state after rejection if component is unmounted", async () => {
-			let readyReject;
+		it("should not log or update state after a failed ready if the component is unmounted", async () => {
+			let readyResolve2;
 			mockReady.mockReturnValue(
-				new Promise((_, reject) => {
-					readyReject = reject;
+				new Promise((resolve) => {
+					readyResolve2 = resolve;
 				})
 			);
 
 			const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
 			const { wrapper, result } = mountWithComposable(() => useABSmartly());
-			expect(result.failed.value).toBe(false);
-
 			wrapper.unmount();
 
-			readyReject(new Error("network failure"));
+			mockIsReady.mockReturnValue(true);
+			mockIsFailed.mockReturnValue(true);
+			readyResolve2(true);
 			await nextTick();
 			await nextTick();
 
 			expect(result.failed.value).toBe(false);
+			expect(consoleErrorSpy).not.toHaveBeenCalled();
 
 			consoleErrorSpy.mockRestore();
 		});
