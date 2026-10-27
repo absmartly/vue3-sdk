@@ -50,15 +50,14 @@ export default {
 		updateState(context);
 
 		if (!context.isReady()) {
-			// ready() never rejects: on init failure it resolves and the failure is
-			// reported through isFailed()/readyError(), which updateState reads.
+			// Failed initialization resolves ready(); updateState reads isFailed().
 			context
 				.ready()
 				.then(() => {
 					if (this.$.isUnmounted) return;
 					updateState(context);
 					if (this.failed) {
-						console.error("ABsmartly context failed to initialize:", context.readyError?.());
+						console.error("ABsmartly context failed to initialize; see the SDK event logger for details.");
 					}
 				})
 				.catch((err) => {

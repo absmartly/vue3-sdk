@@ -21,14 +21,13 @@ export function useABSmartly() {
 	});
 
 	if (!ready.value) {
-		// ready() never rejects: on init failure it resolves and the failure is
-		// reported through isFailed()/readyError().
+		// Failed initialization resolves ready(); the SDK event logger receives the error.
 		context.ready().finally(() => {
 			if (disposed) return;
 			ready.value = context.isReady();
 			failed.value = context.isFailed();
 			if (failed.value) {
-				console.error("ABsmartly context failed to initialize:", context.readyError?.());
+				console.error("ABsmartly context failed to initialize; see the SDK event logger for details.");
 			}
 		});
 	}

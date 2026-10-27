@@ -334,8 +334,9 @@ const buttonColor = computed(() => {
 > "ABsmartly Context is not yet ready." before ready), the composable's `treatment()`, `peek()` and
 > `variableValue()` return computed refs that yield `0` / the default until `ready` is `true`, so
 > templates can render a loading state without a `try/catch`. No exposure is queued before ready.
-> If the context fails to initialize, `ready` and `failed` both become `true`, and the failure is
-> available from `context.readyError()` (`ready()` never rejects).
+> If the context fails to initialize, `ready` and `failed` both become `true`; `ready()` does not reject.
+> The JavaScript SDK sends the original error to the `eventLogger` configured in `sdkOptions`
+> (see [Custom Event Logger](#custom-event-logger)); its default logger writes errors to the console.
 
 ### Treatment Variables
 

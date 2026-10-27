@@ -606,14 +606,12 @@ describe("Treatment.vue", () => {
 	});
 
 	describe("Error Handling - failed context (ready() resolves, failure is on isFailed())", () => {
-		it("should surface failed=true and log readyError() when ready() resolves for a failed context", async () => {
+		it("should surface failed=true without requiring an error accessor", async () => {
 			const slotMock = jest.fn();
 			const loadingMock = jest.fn();
-			const failure = new Error("network error");
 
 			mocks.$absmartly.isReady.mockReturnValue(false);
 			mocks.$absmartly.isFailed.mockReturnValue(false);
-			mocks.$absmartly.readyError = jest.fn().mockReturnValue(failure);
 
 			let resolveReady;
 			mocks.$absmartly.ready.mockReturnValue(
@@ -643,10 +641,9 @@ describe("Treatment.vue", () => {
 			await wrapper.vm.$nextTick();
 
 			expect(wrapper.vm.failed).toBe(true);
-			expect(consoleErrorSpy).toHaveBeenCalledWith("ABsmartly context failed to initialize:", failure);
+			expect(consoleErrorSpy).toHaveBeenCalledWith("ABsmartly context failed to initialize; see the SDK event logger for details.");
 
 			consoleErrorSpy.mockRestore();
-			delete mocks.$absmartly.readyError;
 		});
 	});
 

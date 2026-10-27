@@ -326,7 +326,7 @@ describe("useABSmartly", () => {
 		});
 	});
 
-	describe("error handling (failure is read from isFailed()/readyError(), ready() never rejects)", () => {
+	describe("error handling (failure is read from isFailed(), ready() never rejects)", () => {
 		beforeEach(() => {
 			mockIsReady.mockReturnValue(false);
 		});
@@ -338,8 +338,6 @@ describe("useABSmartly", () => {
 					readyResolve2 = resolve;
 				})
 			);
-			const failure = new Error("network failure");
-			mockContext.readyError = jest.fn().mockReturnValue(failure);
 
 			const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
@@ -354,7 +352,7 @@ describe("useABSmartly", () => {
 
 			expect(result.failed.value).toBe(true);
 			expect(result.ready.value).toBe(true);
-			expect(consoleErrorSpy).toHaveBeenCalledWith("ABsmartly context failed to initialize:", failure);
+			expect(consoleErrorSpy).toHaveBeenCalledWith("ABsmartly context failed to initialize; see the SDK event logger for details.");
 
 			consoleErrorSpy.mockRestore();
 		});
