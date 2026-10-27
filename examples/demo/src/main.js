@@ -14,7 +14,7 @@ createApp(App)
     },
     context: {
       units: {
-        user_id: Math.floor(Math.random * 100000)
+        user_id: Math.floor(Math.random() * 100000)
       }
     },
     attributes: {

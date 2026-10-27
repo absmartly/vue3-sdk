@@ -1,6 +1,6 @@
 {
 	"name": "@absmartly/vue3-sdk",
-	"version": "1.0.1",
+	"version": "1.1.0",
 	"homepage": "https://github.com/absmartly/vue3-sdk#README.md",
 	"bugs": {
 		"url": "https://github.com/absmartly/vue3-sdk/issues"
@@ -48,7 +48,7 @@
 		"eslint-plugin-prettier": "^4.2.1",
 		"eslint-plugin-vue": "^9.15.1",
 		"prettier": "^2.8.8",
-		"vue-template-compiler": "^2.7.14"
+		"vue": "^3.3.0"
 	},
 	"publishConfig": {
 		"access": "public"
