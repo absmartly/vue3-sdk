@@ -70,15 +70,7 @@ function mountExperiment(context) {
 		defineComponent({
 			setup() {
 				result = useABSmartly();
-				return () =>
-					h(
-						Treatment,
-						{ name: "exp_test_ab" },
-						{
-							default: ({ treatment }) => `variant ${treatment}`,
-							loading: () => "loading",
-						}
-					);
+				return () => h(Treatment, { name: "exp_test_ab" }, { default: ({ treatment }) => `variant ${treatment}` });
 			},
 		}),
 		{ global: { plugins: [[ABSmartly, { context }]] } }
@@ -180,21 +172,26 @@ describe("real JavaScript SDK context", () => {
 				getContext: jest.fn().mockResolvedValue(strictEnvironmentAudienceData(audienceEnvironment)),
 				publish: jest.fn().mockResolvedValue(undefined),
 			});
-			const sdk = new SDK({ client, eventLogger: jest.fn() });
+			const eventLogger = jest.fn();
+			const sdk = new SDK({ client, eventLogger });
 			const context = sdk.createContext({ units: { session_id: "e791e240fcd3df7d238cfc285f475e8152fcc0ec" } });
 			await context.ready();
-			return context;
+			return { context, eventLogger };
+		}
+
+		function exposures(eventLogger) {
+			return eventLogger.mock.calls.filter(([, type]) => type === "exposure").map(([, , data]) => data);
 		}
 
 		it("gives a strict environment audience the matching variant from the configured environment", async () => {
-			const context = await contextFor("production");
+			const { context, eventLogger } = await contextFor("production");
 			const { wrapper, result } = mountExperiment(context);
 			try {
 				expect(wrapper.text()).toBe("variant 1");
 				expect(result.treatment("exp_test_ab").value).toBe(1);
 				expect(result.variableValue("banner.size", "small").value).toBe("large");
 				expect(context.getAttributes()).toEqual({});
-				expect(context._exposures).toEqual([
+				expect(exposures(eventLogger)).toEqual([
 					expect.objectContaining({ name: "exp_test_ab", variant: 1, audienceMismatch: false }),
 				]);
 			} finally {
@@ -204,12 +201,12 @@ describe("real JavaScript SDK context", () => {
 		});
 
 		it("gives variant 0 when a strict audience names another environment", async () => {
-			const context = await contextFor("staging");
+			const { context, eventLogger } = await contextFor("staging");
 			const { wrapper, result } = mountExperiment(context);
 			try {
 				expect(wrapper.text()).toBe("variant 0");
 				expect(result.treatment("exp_test_ab").value).toBe(0);
-				expect(context._exposures).toEqual([
+				expect(exposures(eventLogger)).toEqual([
 					expect.objectContaining({ name: "exp_test_ab", variant: 0, audienceMismatch: true }),
 				]);
 			} finally {

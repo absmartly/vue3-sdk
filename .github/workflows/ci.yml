@@ -15,7 +15,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: scripts/build-git-javascript-sdk.sh
       - run: npm test -- --runInBand
       - run: npm run lint
       - run: npm run build
