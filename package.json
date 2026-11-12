@@ -30,7 +30,7 @@
 		"format": "prettier --write **/*.{js,json,vue}"
 	},
 	"dependencies": {
-		"@absmartly/javascript-sdk": "^1.11.4"
+		"@absmartly/javascript-sdk": "github:absmartly/javascript-sdk#feat/sdk-system-attributes"
 	},
 	"peerDependencies": {
 		"vue": "^3.3.0"

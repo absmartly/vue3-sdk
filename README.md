@@ -451,6 +451,8 @@ onMounted(() => {
 </script>
 ```
 
+Audiences and assignment-rule conditions can also target `application` and `environment`: the context evaluates them with the `application` and `environment` names from `sdkOptions`, without publishing them as attributes. An attribute you set with the same name takes precedence.
+
 ### Custom Assignments
 
 Sometimes it may be necessary to override the automatic selection of a variant based on external data, such as an API call.
