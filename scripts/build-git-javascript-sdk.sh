@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # npm installs a git dependency without running its prepack script, so a git-pinned
 # @absmartly/javascript-sdk arrives without its build output (lib/, es/, dist/, types/).
-# Build the locked commit the way prepack would and unpack it over the installed copy.
+# Build the locked commit's outputs the way prepack would (minus its format, lint and test steps,
+# which javascript-sdk's own CI runs) and unpack it over the installed copy.
 # Remove this once the dependency is a registry release again.
 set -euo pipefail
 
@@ -27,7 +28,10 @@ git -C "$work/src" checkout -q FETCH_HEAD
 (
 	cd "$work/src"
 	npm ci
-	npm run -s build
+	npm run -s compile
+	npm run -s build-es
+	npm run -s build-cjs
+	npm run -s build-browser
 	npm pack --silent --ignore-scripts --pack-destination "$work"
 )
 
