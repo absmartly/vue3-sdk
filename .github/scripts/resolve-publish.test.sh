@@ -47,20 +47,22 @@ STUB
 for shape in object array; do
   wrap() { if [ "$shape" = array ]; then printf '[%s]' "$1"; else printf '%s' "$1"; fi; }
   ONE=$(wrap '{"versions":"1.0.1","dist-tags":{"latest":"1.0.1"}}')
+  ELEVEN=$(wrap '{"versions":"11.0.0","dist-tags":{"latest":"11.0.0"}}')
   TWO=$(wrap '{"versions":["1.0.1","2.0.0"],"dist-tags":{"latest":"2.0.0"}}')
   TEN=$(wrap '{"versions":["9.0.0","10.0.0"],"dist-tags":{"latest":"10.0.0"}}')
 
   run "$shape: patch on current major" 1.0.2 tag v1.0.2 false ok "$ONE" 0 1.0.2 ""
-  run "$shape: old major after newer latest gets v1" 1.0.2 tag v1.0.2 false ok "$TWO" 0 1.0.2 "--tag v1"
+  run "$shape: old major after newer latest gets latest-1" 1.0.2 tag v1.0.2 false ok "$TWO" 0 1.0.2 "--tag latest-1"
   run "$shape: patch on latest major" 2.0.1 tag v2.0.1 false ok "$TWO" 0 2.0.1 ""
   run "$shape: new major" 3.0.0 tag v3.0.0 false ok "$TWO" 0 3.0.0 ""
-  run "$shape: numeric major compare 9 < 10" 9.1.0 tag v9.1.0 false ok "$TEN" 0 9.1.0 "--tag v9"
+  run "$shape: numeric major compare 9 < 10" 9.1.0 tag v9.1.0 false ok "$TEN" 0 9.1.0 "--tag latest-9"
   run "$shape: tag mismatch fails" 1.0.2 tag v1.0.3 false ok "$ONE" 1 "" ""
   run "$shape: tag without v fails" 1.0.2 tag 1.0.2 false ok "$ONE" 1 "" ""
   run "$shape: already published (single) fails" 1.0.1 tag v1.0.1 false ok "$ONE" 1 "" ""
   run "$shape: already published (list) fails" 2.0.0 tag v2.0.0 false ok "$TWO" 1 "" ""
   run "$shape: dry run of published version warns" 1.0.1 branch main true ok "$ONE" 0 1.0.1 ""
   run "$shape: dry run on tag of published version warns" 1.0.1 tag v1.0.1 true ok "$ONE" 0 1.0.1 ""
+  run "$shape: single version is not substring-matched" 1.0.0 tag v1.0.0 false ok "$ELEVEN" 0 1.0.0 "--tag latest-1"
   run "$shape: real publish from branch fails" 1.0.2 branch main false ok "$ONE" 1 "" ""
 done
 

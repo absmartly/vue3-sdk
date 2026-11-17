@@ -3,7 +3,7 @@
 #
 # Inputs (env): PACKAGE, REF_TYPE, REF_NAME, DRY_RUN ("true" for a rehearsal),
 #               GITHUB_OUTPUT. Reads ./package.json and queries npm.
-# Outputs (GITHUB_OUTPUT): version=<x.y.z>, tag_args=<"" | "--tag v<major>">
+# Outputs (GITHUB_OUTPUT): version=<x.y.z>, tag_args=<"" | "--tag latest-<major>">
 set -euo pipefail
 
 VERSION=$(node -p "require('./package.json').version")
@@ -58,11 +58,13 @@ LATEST=$(echo "$VIEW" | jq -r '.latest')
 echo "Current latest on npm: ${LATEST:-<none>}"
 
 # Never let an older major line become `latest` (e.g. a 1.x patch after 2.0.0).
+# The tag is `latest-<major>` (npm's own convention) rather than `v<major>`:
+# npm rejects dist-tags that are valid semver ranges, and `v1` is one.
 TAG_ARGS=""
 if [ -n "$LATEST" ]; then
   LATEST_MAJOR=${LATEST%%.*}
   if [ "$MAJOR" -lt "$LATEST_MAJOR" ]; then
-    TAG_ARGS="--tag v${MAJOR}"
+    TAG_ARGS="--tag latest-${MAJOR}"
   fi
 fi
 echo "dist-tag: ${TAG_ARGS:-latest (default)}"

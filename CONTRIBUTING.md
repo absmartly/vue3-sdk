@@ -49,7 +49,7 @@ Releases are published to npm by the [Publish workflow](.github/workflows/publis
 
 1. Bump `version` in `package.json` (and `package-lock.json`) on `main` through a pull request.
 2. Push a tag that matches the version exactly: `git tag v1.2.3 && git push origin v1.2.3`.
-3. The workflow lints, tests and builds, then fails unless the tag equals `v` + the `package.json` version. If the version's major is lower than the major of the current `latest` on npm, it is published under the `v<major>` dist-tag so it does not become `latest`.
+3. The workflow lints, tests and builds, then fails unless the tag equals `v` + the `package.json` version. If the version's major is lower than the major of the current `latest` on npm, it is published under the `latest-<major>` dist-tag (e.g. `latest-1`) so it does not become `latest`. (npm rejects `v1`-style tag names because they are valid semver ranges.)
 
 To rehearse a release, run the Publish workflow manually from the Actions tab; `dry_run` defaults to `true` and runs every step except the publish.
 
