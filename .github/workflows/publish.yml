@@ -1,0 +1,168 @@
+name: Publish
+
+# Publishes @absmartly/vue3-sdk to npm via npm Trusted Publishing (OIDC).
+# The npm trusted publisher is bound to this repo, this file name (publish.yml)
+# and the `npm` environment; renaming either breaks publishing.
+#
+# Release: bump "version" in package.json on main, then push a matching tag,
+# e.g. `git tag v1.0.2 && git push origin v1.0.2`.
+# Rehearsal: run this workflow manually with dry_run=true (the default); it runs
+# every step except the actual publish.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: run every step except the npm publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PACKAGE: "@absmartly/vue3-sdk"
+      # Tag pushes always publish; manual runs publish only with dry_run=false.
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          cache: "npm"
+
+      # Trusted Publishing needs npm >= 11.5.1.
+      - name: Update npm
+        run: |
+          set -euo pipefail
+          npm install -g npm@latest
+          NPM_VERSION=$(npm --version)
+          echo "npm ${NPM_VERSION}"
+          if [ "$(printf '%s\n' 11.5.1 "$NPM_VERSION" | sort -V | head -n1)" != "11.5.1" ]; then
+            echo "::error::npm ${NPM_VERSION} is older than 11.5.1, which Trusted Publishing requires."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Lint
+        run: npm run lint -- --no-fix
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Check build left no changes
+        run: git diff --exit-code
+
+      - name: Resolve version and npm dist-tag
+        id: version
+        shell: bash
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          echo "package.json version: ${VERSION}"
+
+          if ! [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::Version '${VERSION}' is not a plain MAJOR.MINOR.PATCH release; this workflow does not publish prereleases."
+            exit 1
+          fi
+          MAJOR=${BASH_REMATCH[1]}
+
+          if [ "$REF_TYPE" = "tag" ]; then
+            if [ "$REF_NAME" != "v${VERSION}" ]; then
+              echo "::error::Tag '${REF_NAME}' does not match package.json version 'v${VERSION}'."
+              exit 1
+            fi
+          elif [ "$DRY_RUN" != "true" ]; then
+            echo "::error::Real publishes must run from a v* tag; '${REF_NAME}' is a ${REF_TYPE}. Use dry_run=true or push a tag."
+            exit 1
+          else
+            echo "::notice::Dry run from ${REF_TYPE} '${REF_NAME}': skipping the tag/version match check."
+          fi
+
+          # A missing package (E404) means first publish; any other failure aborts.
+          if VIEW=$(npm view "$PACKAGE" --json versions dist-tags 2>view.err); then
+            :
+          elif grep -q E404 view.err; then
+            VIEW='{}'
+          else
+            cat view.err >&2
+            exit 1
+          fi
+
+          if echo "$VIEW" | jq -e --arg v "$VERSION" '[.versions // [] | if type == "string" then [.] else . end | .[] | select(. == $v)] | length > 0' >/dev/null; then
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "::warning::${PACKAGE}@${VERSION} is already on npm; a real publish of this version would fail."
+            else
+              echo "::error::${PACKAGE}@${VERSION} is already on npm."
+              exit 1
+            fi
+          fi
+
+          LATEST=$(echo "$VIEW" | jq -r '."dist-tags".latest // empty')
+          echo "Current latest on npm: ${LATEST:-<none>}"
+
+          # Never let an older major line become `latest` (e.g. a 1.x patch after 2.0.0).
+          TAG_ARGS=""
+          if [ -n "$LATEST" ]; then
+            LATEST_MAJOR=${LATEST%%.*}
+            if [ "$MAJOR" -lt "$LATEST_MAJOR" ]; then
+              TAG_ARGS="--tag v${MAJOR}"
+            fi
+          fi
+          echo "dist-tag: ${TAG_ARGS:-latest (default)}"
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag_args=${TAG_ARGS}" >> "$GITHUB_OUTPUT"
+
+      # --ignore-scripts: dist/ was built and tested above; the package's
+      # `prepack` script would run `npm upgrade` and rebuild with different deps.
+      # `npm publish --dry-run` refuses already-published versions, so the
+      # rehearsal packs the tarball and prints the command it would run.
+      - name: Publish to npm (dry run)
+        if: env.DRY_RUN == 'true'
+        env:
+          TAG_ARGS: ${{ steps.version.outputs.tag_args }}
+        run: |
+          npm pack --dry-run --ignore-scripts
+          echo "Dry run: would run: npm publish --provenance --access public --ignore-scripts ${TAG_ARGS}"
+
+      - name: Publish to npm
+        if: env.DRY_RUN != 'true'
+        env:
+          TAG_ARGS: ${{ steps.version.outputs.tag_args }}
+          # Fallback only: npm uses the OIDC trusted publisher first and falls
+          # back to this token if OIDC is unavailable. Remove once trusted
+          # publishing is confirmed working.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # shellcheck disable=SC2086
+          npm publish --provenance --access public --ignore-scripts $TAG_ARGS

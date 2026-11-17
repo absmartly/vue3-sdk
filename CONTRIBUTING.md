@@ -43,6 +43,16 @@ If you want to debug your changes consuming it from a test application, you coul
 - For browsers, import the **UMD** bundle from an HTML document. To debug you can use the browser dev tools.
 - For Node, you could use symlinks via [npm link command](https://docs.npmjs.com/cli/link.html) and then import the package as usual. To debug you could use the [Node inspector](https://nodejs.org/en/docs/guides/debugging-getting-started/).
 
+### Releasing
+
+Releases are published to npm by the [Publish workflow](.github/workflows/publish.yml) using npm Trusted Publishing (OIDC, with provenance); no npm token is needed locally.
+
+1. Bump `version` in `package.json` (and `package-lock.json`) on `main` through a pull request.
+2. Push a tag that matches the version exactly: `git tag v1.2.3 && git push origin v1.2.3`.
+3. The workflow lints, tests and builds, then fails unless the tag equals `v` + the `package.json` version. If the version's major is lower than the major of the current `latest` on npm, it is published under the `v<major>` dist-tag so it does not become `latest`.
+
+To rehearse a release, run the Publish workflow manually from the Actions tab; `dry_run` defaults to `true` and runs every step except the publish.
+
 # Contact
 
 If you have any other questions or need to contact us directly we can be reached at sdk@absmartly.com
