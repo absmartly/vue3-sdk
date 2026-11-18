@@ -2,7 +2,8 @@
 # Resolves the version to publish and the npm dist-tag arguments for publish.yml.
 #
 # Inputs (env): PACKAGE, REF_TYPE, REF_NAME, DRY_RUN ("true" for a rehearsal),
-#               GITHUB_OUTPUT. Reads ./package.json and queries npm.
+#               GITHUB_OUTPUT, REGISTRY (default https://registry.npmjs.org).
+#               Reads ./package.json and queries the registry.
 # Outputs (GITHUB_OUTPUT): version=<x.y.z>,
 #   tag_args=<"" | "--tag latest-<major>" | "--tag latest-<major>.<minor>">
 set -euo pipefail
@@ -10,7 +11,7 @@ set -euo pipefail
 VERSION=$(node -p "require('./package.json').version")
 echo "package.json version: ${VERSION}"
 
-if ! [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+if ! [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
   echo "::error::Version '${VERSION}' is not a plain MAJOR.MINOR.PATCH release; this workflow does not publish prereleases."
   exit 1
 fi
@@ -30,35 +31,70 @@ else
   echo "::notice::Dry run from ${REF_TYPE} '${REF_NAME}': skipping the tag/version match check."
 fi
 
-# A missing package (E404) means first publish; any other failure aborts.
-ERR_FILE=$(mktemp)
-if VIEW=$(npm view "$PACKAGE" --json versions dist-tags 2>"$ERR_FILE"); then
-  :
-elif grep -q E404 "$ERR_FILE"; then
-  VIEW='{}'
-else
-  cat "$ERR_FILE" >&2
-  exit 1
-fi
+# Registry reads bypass `npm view`: it reads the full package document, which
+# npm's CDN caches for up to 300 s, so a release queued right behind another
+# would see the dist-tags from before it. These two endpoints are not cached.
+REGISTRY=${REGISTRY:-https://registry.npmjs.org}
+PKG_PATH=${PACKAGE/\//%2f}
+BODY=$(mktemp)
 
-# npm >= 12 wraps `npm view --json` output in an array; npm 11 returns an object.
-# A package with a single version reports `versions` as a string, not an array.
-VIEW=$(echo "$VIEW" | jq -c '
-  (if type == "array" then (.[0] // {}) else . end)
-  | {versions: (.versions // [] | if type == "string" then [.] else . end),
-     tags: (."dist-tags" // {})}')
-
-if echo "$VIEW" | jq -e --arg v "$VERSION" '.versions | index($v) != null' >/dev/null; then
-  if [ "$DRY_RUN" = "true" ]; then
-    echo "::warning::${PACKAGE}@${VERSION} is already on npm; a real publish of this version would fail."
-  else
-    echo "::error::${PACKAGE}@${VERSION} is already on npm."
+# get <path>: fetches ${REGISTRY}/<path> into $BODY and prints the HTTP status.
+# A network failure aborts (set -e fails the caller's assignment).
+get() {
+  local code
+  if ! code=$(curl -sS --retry 3 -o "$BODY" -w '%{http_code}' "${REGISTRY}/$1"); then
+    echo "::error::Registry request for ${REGISTRY}/$1 failed." >&2
     exit 1
   fi
-fi
+  echo "$code"
+}
+
+# A missing package is a first publish: the version lookup returns 404, and the
+# dist-tags endpoint returns 404 (401 for a scope) because there is no package.
+# Any other status aborts.
+CODE=$(get "${PKG_PATH}/${VERSION}")
+case "$CODE" in
+  200)
+    if [ "$DRY_RUN" = "true" ]; then
+      echo "::warning::${PACKAGE}@${VERSION} is already on npm; a real publish of this version would fail."
+    else
+      echo "::error::${PACKAGE}@${VERSION} is already on npm."
+      exit 1
+    fi
+    ;;
+  404) ;;
+  *)
+    echo "::error::Registry returned HTTP ${CODE} looking up ${PACKAGE}@${VERSION}."
+    exit 1
+    ;;
+esac
+
+CODE=$(get "-/package/${PKG_PATH}/dist-tags")
+case "$CODE" in
+  200)
+    if ! TAGS=$(jq -ce 'if type == "object" then . else error("not an object") end' "$BODY"); then
+      echo "::error::Registry returned unreadable dist-tags for ${PACKAGE}."
+      exit 1
+    fi
+    ;;
+  401 | 404)
+    # Only a package that does not exist has no dist-tags; confirm it.
+    CODE=$(get "${PKG_PATH}")
+    if [ "$CODE" != 404 ]; then
+      echo "::error::Registry has no dist-tags for ${PACKAGE} but its package lookup returned HTTP ${CODE}."
+      exit 1
+    fi
+    echo "${PACKAGE} is not on npm yet: first publish."
+    TAGS='{}'
+    ;;
+  *)
+    echo "::error::Registry returned HTTP ${CODE} reading the dist-tags of ${PACKAGE}."
+    exit 1
+    ;;
+esac
 
 # Prints the version holding dist-tag $1, or nothing if the tag is unset.
-tag_holder() { echo "$VIEW" | jq -r --arg t "$1" '.tags[$t] // ""'; }
+tag_holder() { echo "$TAGS" | jq -r --arg t "$1" '.[$t] // ""'; }
 
 # Succeeds if MAJOR.MINOR.PATCH is below the npm version $1, comparing only
 # its MAJOR.MINOR.PATCH core (so 2.0.0 is not below 2.0.0-beta.1). Aborts on
