@@ -37,11 +37,13 @@ fi
 REGISTRY=${REGISTRY:-https://registry.npmjs.org}
 PKG_PATH=${PACKAGE/\//%2f}
 BODY=$(mktemp)
+DOC=$(mktemp)
 
-# get <path>: fetches ${REGISTRY}/<path> into $BODY and prints the HTTP status.
+# get <path> [<file>]: fetches ${REGISTRY}/<path> into <file> (default $BODY)
+# and prints the HTTP status.
 get() {
   local code
-  if ! code=$(curl -sS --retry 3 --connect-timeout 10 --max-time 30 -o "$BODY" -w '%{http_code}' "${REGISTRY}/$1"); then
+  if ! code=$(curl -sS --retry 3 --connect-timeout 10 --max-time 30 -o "${2:-$BODY}" -w '%{http_code}' "${REGISTRY}/$1"); then
     echo "::error::Registry request for ${REGISTRY}/$1 failed." >&2
     exit 1
   fi
@@ -75,10 +77,8 @@ TAGS_CODE=$CODE
 # The package document lists every version, including ones no dist-tag points
 # to any more, with deprecations. The CDN caches it for up to 300 s and ignores
 # Cache-Control request headers, so a unique query string forces a fresh copy;
-# HIGHEST and line_top still merge in the dist-tags as a second source.
-DOC=$(mktemp)
-CODE=$(get "${PKG_PATH}?_=$(date +%s%N)")
-cp "$BODY" "$DOC"
+# STABLE still merges in the dist-tags as a second source.
+CODE=$(get "${PKG_PATH}?_=$(date +%s%N)" "$DOC")
 
 case "$TAGS_CODE" in
   200)
@@ -105,7 +105,7 @@ case "$TAGS_CODE" in
     fi
     echo "${PACKAGE} is not on npm yet: first publish."
     TAGS='{}'
-    echo '{}' > "$DOC"
+    echo '{"versions":{},"time":{}}' > "$DOC"
     ;;
   *)
     echo "::error::Registry returned HTTP ${TAGS_CODE} reading the dist-tags of ${PACKAGE}."
@@ -148,38 +148,33 @@ if [ -n "$LATEST" ]; then
   below "$LATEST" || true # aborts on a latest that is not semver
 fi
 
-# npm refuses to implicitly tag a version `latest` when a higher stable,
-# non-deprecated version exists under any tag (or none), not just `latest`.
-# HIGHEST is the highest of those and every dist-tag holder, `latest` included
-# even as a prerelease (compared by its MAJOR.MINOR.PATCH core).
-if ! HIGHEST=$(jq -re --argjson tags "$TAGS" '
-  def core: capture("^(?<a>[0-9]+)\\.(?<b>[0-9]+)\\.(?<c>[0-9]+)") | [.a, .b, .c | tonumber];
+# STABLE is every stable version npm knows of: the non-deprecated ones in the
+# package document (what `npm publish` compares against before it refuses an
+# implicit `latest`) plus every stable dist-tag holder.
+if ! STABLE=$(jq -ce --argjson tags "$TAGS" '
   def stable: test("^[0-9]+\\.[0-9]+\\.[0-9]+$");
-  ([.versions // {} | to_entries[]
+  [.versions | to_entries[]
       | select((.value.deprecated // "") == "" and (.key | stable)) | .key]
-    + [$tags[] | strings | select(stable)]
-    + [$tags.latest // empty | strings | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+"))])
-  | max_by(core) // ""' "$DOC"); then
+    + [$tags[] | strings | select(stable)]' "$DOC"); then
   echo "::error::Registry returned an unreadable package document for ${PACKAGE}."
   exit 1
 fi
+
+# top <versions-json>: prints the highest of the versions by numeric
+# MAJOR.MINOR.PATCH core, or nothing.
+top() {
+  jq -r 'max_by(capture("^(?<a>[0-9]+)\\.(?<b>[0-9]+)\\.(?<c>[0-9]+)") | [.a, .b, .c | tonumber]) // ""' <<<"$1"
+}
+
+# HIGHEST also counts a prerelease `latest`, by its core: never publish over it.
+HIGHEST=$(top "$(jq -c --arg l "$LATEST" '. + ([$l] | map(select(test("^[0-9]+\\.[0-9]+\\.[0-9]+"))))' <<<"$STABLE")")
 if [ -n "$HIGHEST" ] && [ "$HIGHEST" != "$LATEST" ]; then
   echo "Highest version on npm: ${HIGHEST}"
 fi
 
-# line_top <prefix>: prints the highest stable version on npm starting with
-# <prefix> (e.g. "1." or "1.2."), or nothing. Like HIGHEST, it counts the
-# non-deprecated versions of the (possibly cached) package document plus every
-# (uncached) dist-tag holder.
-line_top() {
-  jq -r --arg p "$1" --argjson tags "$TAGS" '
-    def stable: test("^[0-9]+\\.[0-9]+\\.[0-9]+$");
-    ([.versions // {} | to_entries[]
-        | select((.value.deprecated // "") == "" and (.key | stable)) | .key]
-      + [$tags[] | strings | select(stable)])
-    | map(select(startswith($p)))
-    | max_by(split(".") | map(tonumber)) // ""' "$DOC"
-}
+# line_top <prefix>: prints the highest STABLE version starting with <prefix>
+# (e.g. "1." or "1.2."), or nothing.
+line_top() { top "$(jq -c --arg p "$1" 'map(select(startswith($p)))' <<<"$STABLE")"; }
 
 # Never move a dist-tag backwards, nor point one below a newer version of its
 # line. A version below HIGHEST goes to the first line tag whose holder and

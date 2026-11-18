@@ -177,7 +177,7 @@ run "package document without versions aborts" 1.0.2 tag v1.0.2 false noversions
 run "200 error object as package document aborts" 1.0.2 tag v1.0.2 false errdoc "1.0.1" '{"latest":"2.0.0"}' 1 "" "" "unreadable package document"
 run "package document server error aborts" 1.0.2 tag v1.0.2 false doc500 "1.0.1" "$ONE" 1 "" "" "reading the package document"
 run "previously unpublished version aborts" 1.0.2 tag v1.0.2 false unpublished "1.0.1" "$ONE" 1 "" "" "was previously published and unpublished"
-run "dry run of previously unpublished version warns" 1.0.2 branch main true unpublished "1.0.1" "$ONE" 0 1.0.2 "" "a real publish would fail"
+run "dry run of previously unpublished version warns" 1.0.2 branch main true unpublished "1.0.1" "$ONE" 0 1.0.2 "" "::warning::@absmartly/vue3-sdk@1.0.2 was previously published and unpublished"
 run "dry run of published version is not reported as unpublished" 1.0.1 branch main true pubtime "1.0.1" "$ONE" 0 1.0.1 "" "already on npm" "unpublished"
 run "unreadable package document aborts" 1.0.2 tag v1.0.2 false badoc "1.0.1" "$ONE" 1 "" "" "unreadable package document"
 run "version lookup server error aborts" 1.0.2 tag v1.0.2 false ver500 "1.0.1" "$TWO" 1 "" "" "HTTP 500 looking up"
