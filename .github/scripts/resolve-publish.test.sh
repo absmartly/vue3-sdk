@@ -30,6 +30,9 @@ run() {
     if [ "${v%!}" != "$v" ]; then doc+="\"${v%!}\":{\"deprecated\":\"old\"},"; else doc+="\"$v\":{},"; fi
   done
   printf '%s}}' "${doc%,}" > "$dir/doc.json"
+  if [ "$mode" = unpublished ]; then
+    jq --arg v "$version" '.time={($v):"2024-01-01T00:00:00.000Z"}' "$dir/doc.json" > "$dir/doc.tmp" && mv "$dir/doc.tmp" "$dir/doc.json"
+  fi
   versions=${versions//!/}
   cat > "$dir/bin/curl" <<STUB
 #!/usr/bin/env bash
@@ -60,7 +63,7 @@ case "\$url" in
   "$PKG_URL")
     case "$mode" in
       new | docmiss) serve 404 '{"error":"Not found"}' ;;
-      doc500) serve 500 '"Internal Server Error"' ;;
+      doc500) serve 500 '{"error":"Internal Server Error"}' ;;
       badoc) serve 200 '<html>' ;;
       *) serve 200 "\$(cat "$dir/doc.json")" ;;
     esac ;;
@@ -148,9 +151,10 @@ run "numeric highest compare 9 < 10" 1.10.1 tag v1.10.1 false ok "1.9.0 1.10.0" 
 run "tag holder missing from stale document still counts" 1.0.2 tag v1.0.2 false ok "1.0.1" '{"latest":"2.0.0"}' 0 1.0.2 "--tag latest-1"
 run "non-latest tag holder missing from stale document still counts" 1.0.2 tag v1.0.2 false ok "1.0.1" '{"latest":"1.0.1","next":"2.0.0"}' 0 1.0.2 "--tag latest-1"
 run "stale document 404 after first publish uses dist-tags" 1.0.2 tag v1.0.2 false docmiss "1.0.1" '{"latest":"2.0.0"}' 0 1.0.2 "--tag latest-1"
-run "package document server error aborts" 1.0.2 tag v1.0.2 false doc500 "1.0.1" "$ONE" 1 "" ""
+run "package document server error aborts" 1.0.2 tag v1.0.2 false doc500 "1.0.1" "$ONE" 1 "" "" "reading the package document"
+run "previously unpublished version aborts" 1.0.2 tag v1.0.2 false unpublished "1.0.1" "$ONE" 1 "" ""
 run "unreadable package document aborts" 1.0.2 tag v1.0.2 false badoc "1.0.1" "$ONE" 1 "" "" "unreadable package document"
-run "version lookup server error aborts" 1.0.2 tag v1.0.2 false ver500 "1.0.1" "$TWO" 1 "" ""
+run "version lookup server error aborts" 1.0.2 tag v1.0.2 false ver500 "1.0.1" "$TWO" 1 "" "" "HTTP 500 looking up"
 
 if [ "$FAILURES" -ne 0 ]; then
   echo "$FAILURES test(s) failed"
