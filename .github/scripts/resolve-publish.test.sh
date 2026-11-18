@@ -17,7 +17,7 @@ TAGS_URL="https://registry.npmjs.org/-/package/@absmartly%2fvue3-sdk/dist-tags"
 #       doc500 (package document errors), docmiss (package document 404
 #       while dist-tags exist), badoc / errdoc (package document is not JSON /
 #       is a JSON error object), notime / noversions (package document
-#       missing that map), ghost / ghost401 (dist-tags 404 / 401 but
+#       without time / with versions not a map), ghost / ghost401 (dist-tags 404 / 401 but
 #       package exists).
 run() {
   local name=$1 version=$2 ref_type=$3 ref_name=$4 dry_run=$5 mode=$6 versions=$7 tags=$8
@@ -70,7 +70,7 @@ case "\$url" in
       badoc) serve 200 '<html>' ;;
       errdoc) serve 200 '{"error":"temporarily unavailable"}' ;;
       notime) serve 200 "\$(jq -c 'del(.time)' "$dir/doc.json")" ;;
-      noversions) serve 200 "\$(jq -c 'del(.versions)' "$dir/doc.json")" ;;
+      noversions) serve 200 "\$(jq -c '.versions=[]' "$dir/doc.json")" ;;
       *) serve 200 "\$(cat "$dir/doc.json")" ;;
     esac ;;
   "$PKG_URL"/*)

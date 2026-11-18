@@ -161,20 +161,27 @@ if ! STABLE=$(jq -ce --argjson tags "$TAGS" '
 fi
 
 # top <versions-json>: prints the highest of the versions by numeric
-# MAJOR.MINOR.PATCH core, or nothing.
+# MAJOR.MINOR.PATCH core, or nothing. Exits non-zero on anything but an array.
 top() {
-  jq -r 'max_by(capture("^(?<a>[0-9]+)\\.(?<b>[0-9]+)\\.(?<c>[0-9]+)") | [.a, .b, .c | tonumber]) // ""' <<<"$1"
+  jq -re 'if type == "array" then
+      max_by(capture("^(?<a>[0-9]+)\\.(?<b>[0-9]+)\\.(?<c>[0-9]+)") | [.a, .b, .c | tonumber]) // ""
+    else error("not an array") end' <<<"$1"
 }
 
 # HIGHEST also counts a prerelease `latest`, by its core: never publish over it.
-HIGHEST=$(top "$(jq -c --arg l "$LATEST" '. + ([$l] | map(select(test("^[0-9]+\\.[0-9]+\\.[0-9]+"))))' <<<"$STABLE")")
+POOL=$(jq -c --arg l "$LATEST" '. + ([$l] | map(select(test("^[0-9]+\\.[0-9]+\\.[0-9]+"))))' <<<"$STABLE")
+HIGHEST=$(top "$POOL")
 if [ -n "$HIGHEST" ] && [ "$HIGHEST" != "$LATEST" ]; then
   echo "Highest version on npm: ${HIGHEST}"
 fi
 
 # line_top <prefix>: prints the highest STABLE version starting with <prefix>
 # (e.g. "1." or "1.2."), or nothing.
-line_top() { top "$(jq -c --arg p "$1" 'map(select(startswith($p)))' <<<"$STABLE")"; }
+line_top() {
+  local line
+  line=$(jq -c --arg p "$1" 'map(select(startswith($p)))' <<<"$STABLE") || exit 1
+  top "$line" || exit 1
+}
 
 # Never move a dist-tag backwards, nor point one below a newer version of its
 # line. A version below HIGHEST goes to the first line tag whose holder and
