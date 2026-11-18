@@ -3,7 +3,8 @@
 #
 # Inputs (env): PACKAGE, REF_TYPE, REF_NAME, DRY_RUN ("true" for a rehearsal),
 #               GITHUB_OUTPUT. Reads ./package.json and queries npm.
-# Outputs (GITHUB_OUTPUT): version=<x.y.z>, tag_args=<"" | "--tag latest-<major>">
+# Outputs (GITHUB_OUTPUT): version=<x.y.z>,
+#   tag_args=<"" | "--tag latest-<major>" | "--tag latest-<major>.<minor>">
 set -euo pipefail
 
 VERSION=$(node -p "require('./package.json').version")
@@ -14,6 +15,8 @@ if ! [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
   exit 1
 fi
 MAJOR=${BASH_REMATCH[1]}
+MINOR=${BASH_REMATCH[2]}
+PATCH=${BASH_REMATCH[3]}
 
 if [ "$REF_TYPE" = "tag" ]; then
   if [ "$REF_NAME" != "v${VERSION}" ]; then
@@ -57,15 +60,27 @@ fi
 LATEST=$(echo "$VIEW" | jq -r '.latest')
 echo "Current latest on npm: ${LATEST:-<none>}"
 
-# Never let an older major line become `latest` (e.g. a 1.x patch after 2.0.0).
-# The tag is `latest-<major>` (npm's own convention) rather than `v<major>`:
-# npm rejects dist-tags that are valid semver ranges, and `v1` is one.
+# Never let a version below the current `latest` become `latest`:
+# an older major (a 1.x patch after 2.0.0) gets `latest-<major>`, and an older
+# minor/patch line of the latest major (1.1.1 after 1.2.0) gets
+# `latest-<major>.<minor>`. npm itself refuses to implicitly tag such a version
+# `latest`. The tags avoid `v<major>`: npm rejects dist-tags that are valid
+# semver ranges, and `v1` is one.
 TAG_ARGS=""
-if [ -n "$LATEST" ]; then
-  LATEST_MAJOR=${LATEST%%.*}
+if [[ "$LATEST" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+  LATEST_MAJOR=${BASH_REMATCH[1]}
+  LATEST_MINOR=${BASH_REMATCH[2]}
+  LATEST_PATCH=${BASH_REMATCH[3]}
   if [ "$MAJOR" -lt "$LATEST_MAJOR" ]; then
     TAG_ARGS="--tag latest-${MAJOR}"
+  elif [ "$MAJOR" -eq "$LATEST_MAJOR" ] &&
+    { [ "$MINOR" -lt "$LATEST_MINOR" ] ||
+      { [ "$MINOR" -eq "$LATEST_MINOR" ] && [ "$PATCH" -lt "$LATEST_PATCH" ]; }; }; then
+    TAG_ARGS="--tag latest-${MAJOR}.${MINOR}"
   fi
+elif [ -n "$LATEST" ]; then
+  echo "::error::Cannot parse npm latest '${LATEST}' as MAJOR.MINOR.PATCH."
+  exit 1
 fi
 echo "dist-tag: ${TAG_ARGS:-latest (default)}"
 

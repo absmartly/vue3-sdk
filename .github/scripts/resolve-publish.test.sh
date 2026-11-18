@@ -49,6 +49,7 @@ for shape in object array; do
   ONE=$(wrap '{"versions":"1.0.1","dist-tags":{"latest":"1.0.1"}}')
   ELEVEN=$(wrap '{"versions":"11.0.0","dist-tags":{"latest":"11.0.0"}}')
   TWO=$(wrap '{"versions":["1.0.1","2.0.0"],"dist-tags":{"latest":"2.0.0"}}')
+  MINORS=$(wrap '{"versions":["1.1.0","1.2.0","1.2.3"],"dist-tags":{"latest":"1.2.3"}}')
   TEN=$(wrap '{"versions":["9.0.0","10.0.0"],"dist-tags":{"latest":"10.0.0"}}')
 
   run "$shape: patch on current major" 1.0.2 tag v1.0.2 false ok "$ONE" 0 1.0.2 ""
@@ -63,12 +64,20 @@ for shape in object array; do
   run "$shape: dry run of published version warns" 1.0.1 branch main true ok "$ONE" 0 1.0.1 ""
   run "$shape: dry run on tag of published version warns" 1.0.1 tag v1.0.1 true ok "$ONE" 0 1.0.1 ""
   run "$shape: single version is not substring-matched" 1.0.0 tag v1.0.0 false ok "$ELEVEN" 0 1.0.0 "--tag latest-1"
+  run "$shape: older minor of latest major gets latest-1.1" 1.1.1 tag v1.1.1 false ok "$MINORS" 0 1.1.1 "--tag latest-1.1"
+  run "$shape: older patch of latest minor gets latest-1.2" 1.2.1 tag v1.2.1 false ok "$MINORS" 0 1.2.1 "--tag latest-1.2"
+  run "$shape: newer patch of latest minor stays latest" 1.2.4 tag v1.2.4 false ok "$MINORS" 0 1.2.4 ""
+  run "$shape: newer minor of latest major stays latest" 1.3.0 tag v1.3.0 false ok "$MINORS" 0 1.3.0 ""
+  run "$shape: numeric minor compare 9 < 10" 1.9.0 tag v1.9.0 false ok "$(wrap '{"versions":["1.10.0"],"dist-tags":{"latest":"1.10.0"}}')" 0 1.9.0 "--tag latest-1.9"
+  run "$shape: numeric patch compare 9 < 10" 1.0.9 tag v1.0.9 false ok "$(wrap '{"versions":["1.0.10"],"dist-tags":{"latest":"1.0.10"}}')" 0 1.0.9 "--tag latest-1.0"
+  run "$shape: higher major with lower minor stays latest" 2.0.0 tag v2.0.0 false ok "$MINORS" 0 2.0.0 ""
   run "$shape: real publish from branch fails" 1.0.2 branch main false ok "$ONE" 1 "" ""
 done
 
 run "prerelease rejected" 1.0.2-beta.1 tag v1.0.2-beta.1 false ok '{}' 1 "" ""
 run "first publish (E404)" 1.0.0 tag v1.0.0 false e404 '' 0 1.0.0 ""
 run "npm view failure aborts" 1.0.2 tag v1.0.2 false fail '' 1 "" ""
+run "unparseable latest aborts" 1.0.2 tag v1.0.2 false ok '{"versions":["x"],"dist-tags":{"latest":"garbage"}}' 1 "" ""
 run "empty array from npm 12" 1.0.0 tag v1.0.0 false ok '[]' 0 1.0.0 ""
 
 if [ "$FAILURES" -ne 0 ]; then

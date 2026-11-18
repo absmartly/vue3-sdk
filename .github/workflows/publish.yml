@@ -23,9 +23,13 @@ on:
 permissions:
   contents: read
 
+# One package-wide group: releases run one at a time, so each resolves its
+# dist-tag against the `latest` left by the previous one. `queue: max` keeps
+# every pending release queued instead of replacing an older pending run.
 concurrency:
-  group: publish-${{ github.ref }}
+  group: publish-vue3-sdk
   cancel-in-progress: false
+  queue: max
 
 jobs:
   publish:
