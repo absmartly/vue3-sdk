@@ -57,11 +57,12 @@ jobs:
           # No dependency cache in the release job: caches are writable by
           # any branch's CI run and would feed into the published build.
 
-      # Trusted Publishing needs npm >= 11.5.1.
+      # Trusted Publishing needs npm >= 11.5.1. Pinned to the 11 line rather
+      # than npm@latest so a new npm major cannot change this job unreviewed.
       - name: Update npm
         run: |
           set -euo pipefail
-          npm install -g npm@latest
+          npm install -g npm@^11.5.1
           NPM_VERSION=$(npm --version)
           echo "npm ${NPM_VERSION}"
           if [ "$(printf '%s\n' 11.5.1 "$NPM_VERSION" | sort -V | head -n1)" != "11.5.1" ]; then

@@ -46,7 +46,7 @@ fi
 VIEW=$(echo "$VIEW" | jq -c '
   (if type == "array" then (.[0] // {}) else . end)
   | {versions: (.versions // [] | if type == "string" then [.] else . end),
-     latest: (."dist-tags".latest // "")}')
+     tags: (."dist-tags" // {})}')
 
 if echo "$VIEW" | jq -e --arg v "$VERSION" '.versions | index($v) != null' >/dev/null; then
   if [ "$DRY_RUN" = "true" ]; then
@@ -57,30 +57,50 @@ if echo "$VIEW" | jq -e --arg v "$VERSION" '.versions | index($v) != null' >/dev
   fi
 fi
 
-LATEST=$(echo "$VIEW" | jq -r '.latest')
+# Prints the version holding dist-tag $1, or nothing if the tag is unset.
+tag_holder() { echo "$VIEW" | jq -r --arg t "$1" '.tags[$t] // ""'; }
+
+# Succeeds if MAJOR.MINOR.PATCH is below the npm version $1, comparing only
+# its MAJOR.MINOR.PATCH core (so 2.0.0 is not below 2.0.0-beta.1). Aborts on
+# anything that is not semver: never guess.
+below() {
+  if ! [[ "$1" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)([-+].*)?$ ]]; then
+    echo "::error::Cannot compare against npm version '$1': not MAJOR.MINOR.PATCH."
+    exit 1
+  fi
+  local ma=${BASH_REMATCH[1]} mi=${BASH_REMATCH[2]} pa=${BASH_REMATCH[3]}
+  [ "$MAJOR" -lt "$ma" ] ||
+    { [ "$MAJOR" -eq "$ma" ] && { [ "$MINOR" -lt "$mi" ] ||
+      { [ "$MINOR" -eq "$mi" ] && [ "$PATCH" -lt "$pa" ]; }; }; }
+}
+
+LATEST=$(tag_holder latest)
 echo "Current latest on npm: ${LATEST:-<none>}"
 
-# Never let a version below the current `latest` become `latest`:
-# an older major (a 1.x patch after 2.0.0) gets `latest-<major>`, and an older
-# minor/patch line of the latest major (1.1.1 after 1.2.0) gets
-# `latest-<major>.<minor>`. npm itself refuses to implicitly tag such a version
+# Never move a dist-tag backwards. A version below `latest` goes to the
+# newest line tag it does not lower: `latest-<major>` (1.4.1 after 2.0.0), else
+# `latest-<major>.<minor>` (1.1.1 after 1.2.0, or 1.2.4 after 2.0.0 when
+# latest-1 is 1.3.0). npm itself refuses to implicitly tag such a version
 # `latest`. The tags avoid `v<major>`: npm rejects dist-tags that are valid
 # semver ranges, and `v1` is one.
 TAG_ARGS=""
-if [[ "$LATEST" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-  LATEST_MAJOR=${BASH_REMATCH[1]}
-  LATEST_MINOR=${BASH_REMATCH[2]}
-  LATEST_PATCH=${BASH_REMATCH[3]}
-  if [ "$MAJOR" -lt "$LATEST_MAJOR" ]; then
-    TAG_ARGS="--tag latest-${MAJOR}"
-  elif [ "$MAJOR" -eq "$LATEST_MAJOR" ] &&
-    { [ "$MINOR" -lt "$LATEST_MINOR" ] ||
-      { [ "$MINOR" -eq "$LATEST_MINOR" ] && [ "$PATCH" -lt "$LATEST_PATCH" ]; }; }; then
-    TAG_ARGS="--tag latest-${MAJOR}.${MINOR}"
+if [ -n "$LATEST" ] && below "$LATEST"; then
+  CANDIDATES=("latest-${MAJOR}.${MINOR}")
+  if [ "$MAJOR" -lt "${LATEST%%.*}" ]; then
+    CANDIDATES=("latest-${MAJOR}" "${CANDIDATES[@]}")
   fi
-elif [ -n "$LATEST" ]; then
-  echo "::error::Cannot parse npm latest '${LATEST}' as MAJOR.MINOR.PATCH."
-  exit 1
+  for TAG in "${CANDIDATES[@]}"; do
+    HOLDER=$(tag_holder "$TAG")
+    if [ -z "$HOLDER" ] || ! below "$HOLDER"; then
+      TAG_ARGS="--tag ${TAG}"
+      break
+    fi
+    echo "${TAG} is at ${HOLDER}, newer than ${VERSION}; not moving it back."
+  done
+  if [ -z "$TAG_ARGS" ]; then
+    echo "::error::${VERSION} is older than every dist-tag it could take (latest-${MAJOR}.${MINOR} is $(tag_holder "latest-${MAJOR}.${MINOR}")); publishing it would move a tag backwards."
+    exit 1
+  fi
 fi
 echo "dist-tag: ${TAG_ARGS:-latest (default)}"
 

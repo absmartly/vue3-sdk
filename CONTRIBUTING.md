@@ -50,7 +50,7 @@ Releases are published to npm by the [Publish workflow](.github/workflows/publis
 1. Bump `version` in `package.json` (and `package-lock.json`) on `main` through a pull request.
 2. Push a tag that matches the version exactly: `git tag v1.2.3 && git push origin v1.2.3`.
 3. The workflow lints, tests and builds, then fails unless the tag equals `v` + the `package.json` version. Only plain `MAJOR.MINOR.PATCH` versions are published; prereleases (e.g. `1.2.3-beta.1`) are refused.
-4. A version below the current `latest` on npm never becomes `latest`. An older major is published under `latest-<major>` (e.g. `1.4.1` after `2.0.0` gets `latest-1`). An older minor or patch line of the latest major is published under `latest-<major>.<minor>` (e.g. `1.1.1` after `1.2.0` gets `latest-1.1`). (npm rejects `v1`-style tag names because they are valid semver ranges.) Releases run one at a time, in the order they were queued.
+4. A version below the current `latest` on npm never becomes `latest`, and no dist-tag is ever moved to an older version. An older major is published under `latest-<major>` (e.g. `1.4.1` after `2.0.0` gets `latest-1`); if `latest-<major>` already points to a newer version, or the version is an older minor or patch line of the latest major (e.g. `1.1.1` after `1.2.0`), it is published under `latest-<major>.<minor>` (e.g. `latest-1.1`). If that tag also points to a newer version, the release fails. (npm rejects `v1`-style tag names because they are valid semver ranges.) Releases run one at a time, in the order they were queued.
 
 To rehearse a release, run the Publish workflow manually from the Actions tab; `dry_run` defaults to `true` and runs every step except the publish.
 

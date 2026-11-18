@@ -17,6 +17,9 @@ run() {
   printf '%s' "$json" > "$dir/view.json"
   cat > "$dir/bin/npm" <<STUB
 #!/usr/bin/env bash
+if [ "\$*" != "view @absmartly/vue3-sdk --json versions dist-tags" ]; then
+  echo "unexpected npm args: \$*" >&2; exit 99
+fi
 case "$mode" in
   ok) cat "$dir/view.json" ;;
   e404) echo "npm error code E404" >&2; exit 1 ;;
@@ -50,6 +53,7 @@ for shape in object array; do
   ELEVEN=$(wrap '{"versions":"11.0.0","dist-tags":{"latest":"11.0.0"}}')
   TWO=$(wrap '{"versions":["1.0.1","2.0.0"],"dist-tags":{"latest":"2.0.0"}}')
   MINORS=$(wrap '{"versions":["1.1.0","1.2.0","1.2.3"],"dist-tags":{"latest":"1.2.3"}}')
+  LINES=$(wrap '{"versions":["1.2.0","1.3.0","1.4.0","2.0.0"],"dist-tags":{"latest":"2.0.0","latest-1":"1.4.0","latest-1.3":"1.3.0"}}')
   TEN=$(wrap '{"versions":["9.0.0","10.0.0"],"dist-tags":{"latest":"10.0.0"}}')
 
   run "$shape: patch on current major" 1.0.2 tag v1.0.2 false ok "$ONE" 0 1.0.2 ""
@@ -71,6 +75,15 @@ for shape in object array; do
   run "$shape: numeric minor compare 9 < 10" 1.9.0 tag v1.9.0 false ok "$(wrap '{"versions":["1.10.0"],"dist-tags":{"latest":"1.10.0"}}')" 0 1.9.0 "--tag latest-1.9"
   run "$shape: numeric patch compare 9 < 10" 1.0.9 tag v1.0.9 false ok "$(wrap '{"versions":["1.0.10"],"dist-tags":{"latest":"1.0.10"}}')" 0 1.0.9 "--tag latest-1.0"
   run "$shape: higher major with lower minor stays latest" 2.0.0 tag v2.0.0 false ok "$MINORS" 0 2.0.0 ""
+  run "$shape: older major line moves latest-1 forward" 1.4.1 tag v1.4.1 false ok "$LINES" 0 1.4.1 "--tag latest-1"
+  run "$shape: latest-1 newer falls back to latest-1.3" 1.3.1 tag v1.3.1 false ok "$LINES" 0 1.3.1 "--tag latest-1.3"
+  run "$shape: unset minor tag is created" 1.2.1 tag v1.2.1 false ok "$LINES" 0 1.2.1 "--tag latest-1.2"
+  run "$shape: every candidate tag newer fails" 1.3.0 tag v1.3.0 false ok "$(wrap '{"versions":["1.3.1","2.0.0"],"dist-tags":{"latest":"2.0.0","latest-1":"1.4.0","latest-1.3":"1.3.1"}}')" 1 "" ""
+  run "$shape: latest-1.1 newer on latest major fails" 1.1.1 tag v1.1.1 false ok "$(wrap '{"versions":["1.1.2","1.2.0"],"dist-tags":{"latest":"1.2.0","latest-1.1":"1.1.2"}}')" 1 "" ""
+  run "$shape: latest-1.1 older on latest major moves forward" 1.1.2 tag v1.1.2 false ok "$(wrap '{"versions":["1.1.1","1.2.0"],"dist-tags":{"latest":"1.2.0","latest-1.1":"1.1.1"}}')" 0 1.1.2 "--tag latest-1.1"
+  run "$shape: prerelease latest compares by core" 2.0.0 tag v2.0.0 false ok "$(wrap '{"versions":["2.0.0-beta.1"],"dist-tags":{"latest":"2.0.0-beta.1"}}')" 0 2.0.0 ""
+  run "$shape: below prerelease latest major gets latest-1" 1.5.0 tag v1.5.0 false ok "$(wrap '{"versions":["2.0.0-beta.1"],"dist-tags":{"latest":"2.0.0-beta.1"}}')" 0 1.5.0 "--tag latest-1"
+  run "$shape: unparseable line tag aborts" 1.4.1 tag v1.4.1 false ok "$(wrap '{"versions":["2.0.0"],"dist-tags":{"latest":"2.0.0","latest-1":"junk"}}')" 1 "" ""
   run "$shape: real publish from branch fails" 1.0.2 branch main false ok "$ONE" 1 "" ""
 done
 
