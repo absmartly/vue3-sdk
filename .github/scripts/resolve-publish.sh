@@ -80,32 +80,22 @@ DOC=$(mktemp)
 CODE=$(get "${PKG_PATH}?_=$(date +%s%N)")
 cp "$BODY" "$DOC"
 
-# npm permanently reserves versions that were published and later unpublished;
-# the version endpoint is 404 in that case, but the package document's time
-# map retains the publication timestamp.
-if jq -e --arg v "$VERSION" '.time[$v] != null and .versions[$v] == null' "$DOC" >/dev/null 2>&1; then
-  if [ "$DRY_RUN" = "true" ]; then
-    echo "::warning::${PACKAGE}@${VERSION} was previously published and unpublished; a real publish would fail."
-  else
-    echo "::error::${PACKAGE}@${VERSION} was previously published and unpublished."
-    exit 1
-  fi
-fi
-
 case "$TAGS_CODE" in
   200)
     if ! TAGS=$(echo "$TAGS" | jq -ce 'if type == "object" then . else error("not an object") end'); then
       echo "::error::Registry returned unreadable dist-tags for ${PACKAGE}."
       exit 1
     fi
-    case "$CODE" in
-      200) ;;
-      404) echo '{}' > "$DOC" ;; # first publish not yet visible through the cache
-      *)
-        echo "::error::Registry returned HTTP ${CODE} reading the package document of ${PACKAGE}."
-        exit 1
-        ;;
-    esac
+    if [ "$CODE" != 200 ]; then
+      echo "::error::Registry returned HTTP ${CODE} reading the package document of ${PACKAGE}."
+      exit 1
+    fi
+    # A 200 that is not a package document (e.g. an error object) would read
+    # as "no versions" and hide newer untagged versions.
+    if ! jq -e '(.versions | type == "object") and (.time | type == "object")' "$DOC" >/dev/null 2>&1; then
+      echo "::error::Registry returned an unreadable package document for ${PACKAGE}."
+      exit 1
+    fi
     ;;
   401 | 404)
     # Only a package that does not exist has no dist-tags; confirm it.
@@ -122,6 +112,18 @@ case "$TAGS_CODE" in
     exit 1
     ;;
 esac
+
+# npm permanently reserves versions that were published and later unpublished;
+# the version endpoint is 404 in that case, but the package document's time
+# map retains the publication timestamp.
+if jq -e --arg v "$VERSION" '.time[$v] != null and .versions[$v] == null' "$DOC" >/dev/null 2>&1; then
+  if [ "$DRY_RUN" = "true" ]; then
+    echo "::warning::${PACKAGE}@${VERSION} was previously published and unpublished; a real publish would fail."
+  else
+    echo "::error::${PACKAGE}@${VERSION} was previously published and unpublished."
+    exit 1
+  fi
+fi
 
 # Prints the version holding dist-tag $1, or nothing if the tag is unset.
 tag_holder() { echo "$TAGS" | jq -r --arg t "$1" '.[$t] // ""'; }

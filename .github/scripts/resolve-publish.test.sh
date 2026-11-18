@@ -14,9 +14,9 @@ TAGS_URL="https://registry.npmjs.org/-/package/@absmartly%2fvue3-sdk/dist-tags"
 # published-versions: space-separated; a `!` suffix marks a version deprecated.
 # mode: ok (package exists), new (not on npm), fail (network error),
 #       tags500 (dist-tags endpoint errors), ver500 (version lookup errors),
-#       doc500 (package document errors), docmiss (package document 404,
-#       e.g. a stale cache right after the first publish), badoc (package
-#       document is not JSON), ghost / ghost401 (dist-tags 404 / 401 but
+#       doc500 (package document errors), docmiss (package document 404
+#       while dist-tags exist), badoc / errdoc (package document is not JSON /
+#       is a JSON error object), ghost / ghost401 (dist-tags 404 / 401 but
 #       package exists).
 run() {
   local name=$1 version=$2 ref_type=$3 ref_name=$4 dry_run=$5 mode=$6 versions=$7 tags=$8
@@ -30,7 +30,7 @@ run() {
   for v in $versions; do
     if [ "${v%!}" != "$v" ]; then doc+="\"${v%!}\":{\"deprecated\":\"old\"},"; else doc+="\"$v\":{},"; fi
   done
-  printf '%s}}' "${doc%,}" > "$dir/doc.json"
+  printf '%s},"time":{}}' "${doc%,}" > "$dir/doc.json"
   if [ "$mode" = unpublished ] || [ "$mode" = pubtime ]; then
     jq --arg v "$version" '.time={($v):"2024-01-01T00:00:00.000Z"}' "$dir/doc.json" > "$dir/doc.tmp" && mv "$dir/doc.tmp" "$dir/doc.json"
   fi
@@ -55,7 +55,7 @@ serve() { printf '%s' "\$2" > "\$out"; printf '%s' "\$1"; }
 case "\$url" in
   "$TAGS_URL")
     case "$mode" in
-      ok | ver500 | doc500 | docmiss | badoc | unpublished | pubtime) serve 200 "\$(cat "$dir/tags.json")" ;;
+      ok | ver500 | doc500 | docmiss | badoc | errdoc | unpublished | pubtime) serve 200 "\$(cat "$dir/tags.json")" ;;
       new) serve 401 '"Unauthorized"' ;;
       ghost) serve 404 '"Not Found"' ;;
       ghost401) serve 401 '"Unauthorized"' ;;
@@ -67,6 +67,7 @@ case "\$url" in
       new | docmiss) serve 404 '{"error":"Not found"}' ;;
       doc500) serve 500 '{"error":"Internal Server Error"}' ;;
       badoc) serve 200 '<html>' ;;
+      errdoc) serve 200 '{"error":"temporarily unavailable"}' ;;
       *) serve 200 "\$(cat "$dir/doc.json")" ;;
     esac ;;
   "$PKG_URL"/*)
@@ -164,10 +165,11 @@ run "prerelease in line is ignored" 1.0.2 tag v1.0.2 false ok "1.0.1 1.5.0-beta.
 run "prefix 1. does not match 10.x" 1.0.2 tag v1.0.2 false ok "1.0.1 10.0.0" '{"latest":"10.0.0"}' 0 1.0.2 "--tag latest-1"
 run "higher deprecated version does not block latest" 1.3.0 tag v1.3.0 false ok "1.2.0 2.0.0!" '{"latest":"1.2.0"}' 0 1.3.0 ""
 run "higher prerelease version does not block latest" 1.3.0 tag v1.3.0 false ok "1.2.0 2.0.0-beta.1" '{"latest":"1.2.0","next":"2.0.0-beta.1"}' 0 1.3.0 ""
-run "numeric highest compare 9 < 10" 1.10.1 tag v1.10.1 false ok "1.9.0 1.10.0" '{"latest":"1.9.0"}' 0 1.10.1 ""
+run "numeric highest compare 9 < 10" 1.9.1 tag v1.9.1 false ok "1.9.0 1.10.0" '{"latest":"1.9.0"}' 0 1.9.1 "--tag latest-1.9"
 run "tag holder missing from stale document still counts" 1.0.2 tag v1.0.2 false ok "1.0.1" '{"latest":"2.0.0"}' 0 1.0.2 "--tag latest-1"
 run "non-latest tag holder missing from stale document still counts" 1.0.2 tag v1.0.2 false ok "1.0.1" '{"latest":"1.0.1","next":"2.0.0"}' 0 1.0.2 "--tag latest-1"
-run "stale document 404 after first publish uses dist-tags" 1.0.2 tag v1.0.2 false docmiss "1.0.1" '{"latest":"2.0.0"}' 0 1.0.2 "--tag latest-1"
+run "package document 404 with dist-tags aborts" 1.0.2 tag v1.0.2 false docmiss "1.0.1" '{"latest":"2.0.0"}' 1 "" "" "HTTP 404 reading the package document"
+run "200 error object as package document aborts" 1.0.2 tag v1.0.2 false errdoc "1.0.1" '{"latest":"2.0.0"}' 1 "" "" "unreadable package document"
 run "package document server error aborts" 1.0.2 tag v1.0.2 false doc500 "1.0.1" "$ONE" 1 "" "" "reading the package document"
 run "previously unpublished version aborts" 1.0.2 tag v1.0.2 false unpublished "1.0.1" "$ONE" 1 "" "" "was previously published and unpublished"
 run "dry run of previously unpublished version warns" 1.0.2 branch main true unpublished "1.0.1" "$ONE" 0 1.0.2 "" "a real publish would fail"
