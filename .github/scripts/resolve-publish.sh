@@ -39,7 +39,6 @@ PKG_PATH=${PACKAGE/\//%2f}
 BODY=$(mktemp)
 
 # get <path>: fetches ${REGISTRY}/<path> into $BODY and prints the HTTP status.
-# A network failure aborts (set -e fails the caller's assignment).
 get() {
   local code
   if ! code=$(curl -sS --retry 3 --connect-timeout 10 --max-time 30 -o "$BODY" -w '%{http_code}' "${REGISTRY}/$1"); then
