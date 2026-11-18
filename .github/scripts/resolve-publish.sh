@@ -69,25 +69,43 @@ case "$CODE" in
 esac
 
 CODE=$(get "-/package/${PKG_PATH}/dist-tags")
-case "$CODE" in
+TAGS=$(cat "$BODY")
+TAGS_CODE=$CODE
+
+# The package document lists every version, including ones no dist-tag points
+# to, with deprecations. It may be cached, so it only adds to the dist-tags:
+# any version this workflow published since is still held by an uncached tag.
+DOC=$(mktemp)
+CODE=$(get "${PKG_PATH}")
+cp "$BODY" "$DOC"
+
+case "$TAGS_CODE" in
   200)
-    if ! TAGS=$(jq -ce 'if type == "object" then . else error("not an object") end' "$BODY"); then
+    if ! TAGS=$(echo "$TAGS" | jq -ce 'if type == "object" then . else error("not an object") end'); then
       echo "::error::Registry returned unreadable dist-tags for ${PACKAGE}."
       exit 1
     fi
+    case "$CODE" in
+      200) ;;
+      404) echo '{}' > "$DOC" ;; # first publish not yet visible through the cache
+      *)
+        echo "::error::Registry returned HTTP ${CODE} reading the package document of ${PACKAGE}."
+        exit 1
+        ;;
+    esac
     ;;
   401 | 404)
     # Only a package that does not exist has no dist-tags; confirm it.
-    CODE=$(get "${PKG_PATH}")
     if [ "$CODE" != 404 ]; then
       echo "::error::Registry has no dist-tags for ${PACKAGE} but its package lookup returned HTTP ${CODE}."
       exit 1
     fi
     echo "${PACKAGE} is not on npm yet: first publish."
     TAGS='{}'
+    echo '{}' > "$DOC"
     ;;
   *)
-    echo "::error::Registry returned HTTP ${CODE} reading the dist-tags of ${PACKAGE}."
+    echo "::error::Registry returned HTTP ${TAGS_CODE} reading the dist-tags of ${PACKAGE}."
     exit 1
     ;;
 esac
@@ -111,17 +129,38 @@ below() {
 
 LATEST=$(tag_holder latest)
 echo "Current latest on npm: ${LATEST:-<none>}"
+if [ -n "$LATEST" ]; then
+  below "$LATEST" || true # aborts on a latest that is not semver
+fi
 
-# Never move a dist-tag backwards. A version below `latest` goes to the
-# newest line tag it does not lower: `latest-<major>` (1.4.1 after 2.0.0), else
+# npm refuses to implicitly tag a version `latest` when a higher stable,
+# non-deprecated version exists under any tag (or none), not just `latest`.
+# HIGHEST is the highest of those and every dist-tag holder, `latest` included
+# even as a prerelease (compared by its MAJOR.MINOR.PATCH core).
+if ! HIGHEST=$(jq -re --argjson tags "$TAGS" '
+  def core: capture("^(?<a>[0-9]+)\\.(?<b>[0-9]+)\\.(?<c>[0-9]+)") | [.a, .b, .c | tonumber];
+  def stable: test("^[0-9]+\\.[0-9]+\\.[0-9]+$");
+  ([.versions // {} | to_entries[]
+      | select((.value.deprecated // "") == "" and (.key | stable)) | .key]
+    + [$tags[] | strings | select(stable)]
+    + [$tags.latest // empty | strings | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+"))])
+  | max_by(core) // ""' "$DOC"); then
+  echo "::error::Registry returned an unreadable package document for ${PACKAGE}."
+  exit 1
+fi
+if [ -n "$HIGHEST" ] && [ "$HIGHEST" != "$LATEST" ]; then
+  echo "Highest version on npm: ${HIGHEST}"
+fi
+
+# Never move a dist-tag backwards. A version below HIGHEST goes to the newest
+# line tag it does not lower: `latest-<major>` (1.4.1 after 2.0.0), else
 # `latest-<major>.<minor>` (1.1.1 after 1.2.0, or 1.2.4 after 2.0.0 when
-# latest-1 is 1.3.0). npm itself refuses to implicitly tag such a version
-# `latest`. The tags avoid `v<major>`: npm rejects dist-tags that are valid
-# semver ranges, and `v1` is one.
+# latest-1 is 1.3.0). The tags avoid `v<major>`: npm rejects dist-tags that
+# are valid semver ranges, and `v1` is one.
 TAG_ARGS=""
-if [ -n "$LATEST" ] && below "$LATEST"; then
+if [ -n "$HIGHEST" ] && below "$HIGHEST"; then
   CANDIDATES=("latest-${MAJOR}.${MINOR}")
-  if [ "$MAJOR" -lt "${LATEST%%.*}" ]; then
+  if [ "$MAJOR" -lt "${HIGHEST%%.*}" ]; then
     CANDIDATES=("latest-${MAJOR}" "${CANDIDATES[@]}")
   fi
   for TAG in "${CANDIDATES[@]}"; do

@@ -4,8 +4,9 @@ name: Publish
 # The npm trusted publisher is bound to this repo, this file name (publish.yml)
 # and the `npm` environment; renaming either breaks publishing.
 #
-# Release: bump "version" in package.json on main, then push a matching tag,
-# e.g. `git tag v1.0.2 && git push origin v1.0.2`.
+# Release: bump "version" in package.json on main, then tag the merged commit
+# on main, e.g. `git fetch origin main && git tag v1.0.2 origin/main &&
+# git push origin v1.0.2` (see CONTRIBUTING.md).
 # Rehearsal: run this workflow manually with dry_run=true (the default); it runs
 # every step except the actual publish.
 

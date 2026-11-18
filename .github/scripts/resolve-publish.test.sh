@@ -9,18 +9,28 @@ FAILURES=0
 PKG_URL="https://registry.npmjs.org/@absmartly%2fvue3-sdk"
 TAGS_URL="https://registry.npmjs.org/-/package/@absmartly%2fvue3-sdk/dist-tags"
 
-# run <name> <pkg-version> <ref-type> <ref-name> <dry-run> <mode> <published-versions> <dist-tags-json> <want-rc> <want-version> <want-tag-args>
+# run <name> <pkg-version> <ref-type> <ref-name> <dry-run> <mode> <published-versions> <dist-tags-json> <want-rc> <want-version> <want-tag-args> [<want-log-substring>]
+# published-versions: space-separated; a `!` suffix marks a version deprecated.
 # mode: ok (package exists), new (not on npm), fail (network error),
 #       tags500 (dist-tags endpoint errors), ver500 (version lookup errors),
-#       ghost / ghost401 (dist-tags 404 / 401 but package exists).
+#       doc500 (package document errors), docmiss (package document 404,
+#       e.g. a stale cache right after the first publish), badoc (package
+#       document is not JSON), ghost / ghost401 (dist-tags 404 / 401 but
+#       package exists).
 run() {
   local name=$1 version=$2 ref_type=$3 ref_name=$4 dry_run=$5 mode=$6 versions=$7 tags=$8
-  local want_rc=$9 want_version=${10} want_tag=${11}
+  local want_rc=$9 want_version=${10} want_tag=${11} want_log=${12:-}
   local dir
   dir=$(mktemp -d)
   printf '{"version":"%s"}\n' "$version" > "$dir/package.json"
   mkdir "$dir/bin"
   printf '%s' "$tags" > "$dir/tags.json"
+  local v doc='{"versions":{'
+  for v in $versions; do
+    if [ "${v%!}" != "$v" ]; then doc+="\"${v%!}\":{\"deprecated\":\"old\"},"; else doc+="\"$v\":{},"; fi
+  done
+  printf '%s}}' "${doc%,}" > "$dir/doc.json"
+  versions=${versions//!/}
   cat > "$dir/bin/curl" <<STUB
 #!/usr/bin/env bash
 # A missing timeout lets one hung request block every queued release.
@@ -41,14 +51,19 @@ serve() { printf '%s' "\$2" > "\$out"; printf '%s' "\$1"; }
 case "\$url" in
   "$TAGS_URL")
     case "$mode" in
-      ok | ver500) serve 200 "\$(cat "$dir/tags.json")" ;;
+      ok | ver500 | doc500 | docmiss | badoc) serve 200 "\$(cat "$dir/tags.json")" ;;
       new) serve 401 '"Unauthorized"' ;;
       ghost) serve 404 '"Not Found"' ;;
       ghost401) serve 401 '"Unauthorized"' ;;
       tags500) serve 500 '"Internal Server Error"' ;;
     esac ;;
   "$PKG_URL")
-    if [ "$mode" = new ]; then serve 404 '{"error":"Not found"}'; else serve 200 '{}'; fi ;;
+    case "$mode" in
+      new | docmiss) serve 404 '{"error":"Not found"}' ;;
+      doc500) serve 500 '"Internal Server Error"' ;;
+      badoc) serve 200 '<html>' ;;
+      *) serve 200 "\$(cat "$dir/doc.json")" ;;
+    esac ;;
   "$PKG_URL"/*)
     v=\${url##*/}
     if [ "$mode" = ver500 ]; then serve 500 '"Internal Server Error"'; exit 0; fi
@@ -66,9 +81,10 @@ STUB
   local got_version got_tag
   got_version=$(sed -n 's/^version=//p' "$dir/out")
   got_tag=$(sed -n 's/^tag_args=//p' "$dir/out")
-  if [ "$rc" != "$want_rc" ] || [ "$got_version" != "$want_version" ] || [ "$got_tag" != "$want_tag" ]; then
+  if [ "$rc" != "$want_rc" ] || [ "$got_version" != "$want_version" ] || [ "$got_tag" != "$want_tag" ] ||
+    { [ -n "$want_log" ] && ! grep -qF -- "$want_log" "$dir/log"; }; then
     echo "FAIL: $name: rc=$rc version='$got_version' tag_args='$got_tag'" \
-      "(want rc=$want_rc version='$want_version' tag_args='$want_tag')"
+      "(want rc=$want_rc version='$want_version' tag_args='$want_tag' log containing '$want_log')"
     sed 's/^/    /' "$dir/log"
     FAILURES=$((FAILURES + 1))
   else
@@ -119,8 +135,21 @@ run "leading-zero version rejected" 01.0.2 tag v01.0.2 false ok "1.0.1" "$ONE" 1
 run "first publish" 1.0.0 tag v1.0.0 false new "" "" 0 1.0.0 ""
 run "network failure aborts" 1.0.2 tag v1.0.2 false fail "" "" 1 "" ""
 run "dist-tags server error aborts" 1.0.2 tag v1.0.2 false tags500 "1.0.1" "" 1 "" ""
-run "missing dist-tags on existing package aborts" 1.0.2 tag v1.0.2 false ghost "1.0.1" "" 1 "" ""
-run "401 dist-tags on existing package aborts" 1.0.2 tag v1.0.2 false ghost401 "1.0.1" "" 1 "" ""
+run "missing dist-tags on existing package aborts" 1.0.2 tag v1.0.2 false ghost "1.0.1" "" 1 "" "" "package lookup returned HTTP 200"
+run "401 dist-tags on existing package aborts" 1.0.2 tag v1.0.2 false ghost401 "1.0.1" "" 1 "" "" "package lookup returned HTTP 200"
+run "first publish confirms the package is missing" 1.0.0 tag v1.0.0 false new "" "" 0 1.0.0 "" "is not on npm yet: first publish"
+run "higher untagged stable version blocks implicit latest" 1.3.0 tag v1.3.0 false ok "1.2.0 2.0.0" '{"latest":"1.2.0"}' 0 1.3.0 "--tag latest-1"
+run "higher stable version under another tag blocks implicit latest" 1.3.0 tag v1.3.0 false ok "1.2.0 2.0.0" '{"latest":"1.2.0","next":"2.0.0"}' 0 1.3.0 "--tag latest-1"
+run "higher version on another major gets latest-<major>" 1.3.0 tag v1.3.0 false ok "1.2.0 2.0.0 2.1.0" '{"latest":"1.2.0","latest-2":"2.1.0"}' 0 1.3.0 "--tag latest-1"
+run "higher same-major untagged version gets latest-1.3" 1.3.0 tag v1.3.0 false ok "1.2.0 1.4.0" '{"latest":"1.2.0"}' 0 1.3.0 "--tag latest-1.3"
+run "higher deprecated version does not block latest" 1.3.0 tag v1.3.0 false ok "1.2.0 2.0.0!" '{"latest":"1.2.0"}' 0 1.3.0 ""
+run "higher prerelease version does not block latest" 1.3.0 tag v1.3.0 false ok "1.2.0 2.0.0-beta.1" '{"latest":"1.2.0","next":"2.0.0-beta.1"}' 0 1.3.0 ""
+run "numeric highest compare 9 < 10" 1.10.1 tag v1.10.1 false ok "1.9.0 1.10.0" '{"latest":"1.9.0"}' 0 1.10.1 ""
+run "tag holder missing from stale document still counts" 1.0.2 tag v1.0.2 false ok "1.0.1" '{"latest":"2.0.0"}' 0 1.0.2 "--tag latest-1"
+run "non-latest tag holder missing from stale document still counts" 1.0.2 tag v1.0.2 false ok "1.0.1" '{"latest":"1.0.1","next":"2.0.0"}' 0 1.0.2 "--tag latest-1"
+run "stale document 404 after first publish uses dist-tags" 1.0.2 tag v1.0.2 false docmiss "1.0.1" '{"latest":"2.0.0"}' 0 1.0.2 "--tag latest-1"
+run "package document server error aborts" 1.0.2 tag v1.0.2 false doc500 "1.0.1" "$ONE" 1 "" ""
+run "unreadable package document aborts" 1.0.2 tag v1.0.2 false badoc "1.0.1" "$ONE" 1 "" "" "unreadable package document"
 run "version lookup server error aborts" 1.0.2 tag v1.0.2 false ver500 "1.0.1" "$TWO" 1 "" ""
 
 if [ "$FAILURES" -ne 0 ]; then
