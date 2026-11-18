@@ -1,0 +1,119 @@
+name: Publish
+
+# Publishes @absmartly/vue3-sdk to npm via npm Trusted Publishing (OIDC).
+# The npm trusted publisher is bound to this repo, this file name (publish.yml)
+# and the `npm` environment; renaming either breaks publishing.
+#
+# Release: bump "version" in package.json on main, then tag the merged commit
+# on main, e.g. `git fetch origin main && git tag v1.0.2 origin/main &&
+# git push origin v1.0.2` (see CONTRIBUTING.md).
+# Rehearsal: run this workflow manually with dry_run=true (the default); it runs
+# every step except the actual publish.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: run every step except the npm publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# One package-wide group: releases run one at a time, so each resolves its
+# dist-tag against the `latest` left by the previous one. `queue: max` keeps
+# every pending release queued instead of replacing an older pending run.
+concurrency:
+  group: publish-vue3-sdk
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # A hung run holds the package-wide concurrency group, blocking every
+    # queued release; fail well before GitHub's 6-hour default.
+    timeout-minutes: 30
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PACKAGE: "@absmartly/vue3-sdk"
+      # Tag pushes always publish; manual runs publish only with dry_run=false.
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          # No dependency cache in the release job: caches are writable by
+          # any branch's CI run and would feed into the published build.
+
+      # Trusted Publishing needs npm >= 11.5.1. Pinned to the 11 line rather
+      # than npm@latest so a new npm major cannot change this job unreviewed.
+      - name: Update npm
+        run: |
+          set -euo pipefail
+          npm install -g npm@^11.5.1
+          NPM_VERSION=$(npm --version)
+          echo "npm ${NPM_VERSION}"
+          if [ "$(printf '%s\n' 11.5.1 "$NPM_VERSION" | sort -V | head -n1)" != "11.5.1" ]; then
+            echo "::error::npm ${NPM_VERSION} is older than 11.5.1, which Trusted Publishing requires."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Lint
+        run: npm run lint -- --no-fix
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Check build left no changes
+        run: git diff --exit-code
+
+      - name: Resolve version and npm dist-tag
+        id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: .github/scripts/resolve-publish.sh
+
+      # `npm publish --dry-run` refuses already-published versions, so the
+      # rehearsal packs the tarball and prints the command it would run.
+      - name: Publish to npm (dry run)
+        if: env.DRY_RUN == 'true'
+        env:
+          TAG_ARGS: ${{ steps.version.outputs.tag_args }}
+        run: |
+          npm pack --dry-run --ignore-scripts
+          echo "Dry run: would run: npm publish --provenance --access public --ignore-scripts ${TAG_ARGS}"
+
+      - name: Publish to npm
+        if: env.DRY_RUN != 'true'
+        env:
+          TAG_ARGS: ${{ steps.version.outputs.tag_args }}
+          # Fallback only: npm uses the OIDC trusted publisher first and falls
+          # back to this token if OIDC is unavailable. Remove once trusted
+          # publishing is confirmed working.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # shellcheck disable=SC2086
+          npm publish --provenance --access public --ignore-scripts $TAG_ARGS

@@ -1,0 +1,61 @@
+name: Build
+
+on:
+  pull_request:
+    branches:
+      - main
+      - "release/**"
+  push:
+    branches:
+      - main
+      - "release/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ["22", "24"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # `vue-cli-service lint` auto-fixes by default; --no-fix makes it fail instead.
+      - name: Lint
+        run: npm run lint -- --no-fix
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # `npm run build` runs `prettier --write` first; fail if that changed any tracked file.
+      - name: Check build left no formatting changes
+        run: git diff --exit-code
+
+      - name: Check package contents
+        run: npm pack --dry-run --ignore-scripts
+
+      - name: Test publish version resolution
+        run: .github/scripts/resolve-publish.test.sh

@@ -43,6 +43,17 @@ If you want to debug your changes consuming it from a test application, you coul
 - For browsers, import the **UMD** bundle from an HTML document. To debug you can use the browser dev tools.
 - For Node, you could use symlinks via [npm link command](https://docs.npmjs.com/cli/link.html) and then import the package as usual. To debug you could use the [Node inspector](https://nodejs.org/en/docs/guides/debugging-getting-started/).
 
+### Releasing
+
+Releases are published to npm by the [Publish workflow](.github/workflows/publish.yml) using npm Trusted Publishing (OIDC, with provenance); no npm token is needed locally.
+
+1. Bump `version` in `package.json` (and `package-lock.json`) on `main` through a pull request.
+2. Tag the merged commit on `main`, not your local `HEAD`, with a tag that matches the version exactly: `git fetch origin main && git show origin/main:package.json | grep '"version"'`, then `git tag v1.2.3 origin/main && git push origin v1.2.3`.
+3. The workflow lints, tests and builds, then fails unless the tag equals `v` + the `package.json` version. Only plain `MAJOR.MINOR.PATCH` versions are published; prereleases (e.g. `1.2.3-beta.1`) are refused.
+4. A version below the highest version on npm never becomes `latest`, and no dist-tag is ever moved to an older version. `npm publish` itself refuses an implicit `latest` below the highest stable, non-deprecated published version; the workflow also counts every stable dist-tag holder and the `MAJOR.MINOR.PATCH` core of `latest`. Prerelease versions on other dist-tags (e.g. `next` at `2.0.0-beta.1`) do not count, so `1.3.0` after `latest` `1.2.0` still becomes `latest`. An older major is published under `latest-<major>` (e.g. `1.4.1` after `2.0.0` gets `latest-1`); if `latest-<major>` already points to a newer version, or the version is an older minor or patch line of the latest major (e.g. `1.1.1` after `1.2.0`), it is published under `latest-<major>.<minor>` (e.g. `latest-1.1`). A line tag is also skipped when its line already has a newer version, even an untagged one (e.g. `1.0.2` after `1.5.0` and `2.0.0` gets `latest-1.0`, not `latest-1`). If no tag fits, e.g. a `1.2.1` backport after `1.2.3`, the release fails. (npm rejects `v1`-style tag names because they are valid semver ranges.) Releases run one at a time, in the order they were queued. The workflow reads the dist-tags just before publishing, but npm has no way to lock them, so do not change dist-tags by hand (`npm dist-tag add`) while a release is running: such a change can be overwritten.
+
+To rehearse a release, run the Publish workflow manually from the Actions tab; `dry_run` defaults to `true` and runs every step except the publish.
+
 # Contact
 
 If you have any other questions or need to contact us directly we can be reached at sdk@absmartly.com
