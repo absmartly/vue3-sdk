@@ -23,11 +23,14 @@ run() {
   printf '%s' "$tags" > "$dir/tags.json"
   cat > "$dir/bin/curl" <<STUB
 #!/usr/bin/env bash
+# A missing timeout lets one hung request block every queued release.
+[[ " \$* " == *" --connect-timeout "* && " \$* " == *" --max-time "* ]] ||
+  { echo "curl called without --connect-timeout and --max-time: \$*" >&2; exit 98; }
 out= url=
 while [ \$# -gt 0 ]; do
   case "\$1" in
     -o) out=\$2; shift ;;
-    -w | --retry) shift ;;
+    -w | --retry | --connect-timeout | --max-time) shift ;;
     -*) ;;
     *) url=\$1 ;;
   esac
@@ -38,7 +41,7 @@ serve() { printf '%s' "\$2" > "\$out"; printf '%s' "\$1"; }
 case "\$url" in
   "$TAGS_URL")
     case "$mode" in
-      ok) serve 200 "\$(cat "$dir/tags.json")" ;;
+      ok | ver500) serve 200 "\$(cat "$dir/tags.json")" ;;
       new) serve 401 '"Unauthorized"' ;;
       ghost) serve 404 '"Not Found"' ;;
       ghost401) serve 401 '"Unauthorized"' ;;
