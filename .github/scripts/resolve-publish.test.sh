@@ -16,7 +16,8 @@ TAGS_URL="https://registry.npmjs.org/-/package/@absmartly%2fvue3-sdk/dist-tags"
 #       tags500 (dist-tags endpoint errors), ver500 (version lookup errors),
 #       doc500 (package document errors), docmiss (package document 404
 #       while dist-tags exist), badoc / errdoc (package document is not JSON /
-#       is a JSON error object), ghost / ghost401 (dist-tags 404 / 401 but
+#       is a JSON error object), notime / noversions (package document
+#       missing that map), ghost / ghost401 (dist-tags 404 / 401 but
 #       package exists).
 run() {
   local name=$1 version=$2 ref_type=$3 ref_name=$4 dry_run=$5 mode=$6 versions=$7 tags=$8
@@ -55,7 +56,7 @@ serve() { printf '%s' "\$2" > "\$out"; printf '%s' "\$1"; }
 case "\$url" in
   "$TAGS_URL")
     case "$mode" in
-      ok | ver500 | doc500 | docmiss | badoc | errdoc | unpublished | pubtime) serve 200 "\$(cat "$dir/tags.json")" ;;
+      ok | ver500 | doc500 | docmiss | badoc | errdoc | notime | noversions | unpublished | pubtime) serve 200 "\$(cat "$dir/tags.json")" ;;
       new) serve 401 '"Unauthorized"' ;;
       ghost) serve 404 '"Not Found"' ;;
       ghost401) serve 401 '"Unauthorized"' ;;
@@ -68,6 +69,8 @@ case "\$url" in
       doc500) serve 500 '{"error":"Internal Server Error"}' ;;
       badoc) serve 200 '<html>' ;;
       errdoc) serve 200 '{"error":"temporarily unavailable"}' ;;
+      notime) serve 200 "\$(jq -c 'del(.time)' "$dir/doc.json")" ;;
+      noversions) serve 200 "\$(jq -c 'del(.versions)' "$dir/doc.json")" ;;
       *) serve 200 "\$(cat "$dir/doc.json")" ;;
     esac ;;
   "$PKG_URL"/*)
@@ -169,6 +172,8 @@ run "numeric highest compare 9 < 10" 1.9.1 tag v1.9.1 false ok "1.9.0 1.10.0" '{
 run "tag holder missing from stale document still counts" 1.0.2 tag v1.0.2 false ok "1.0.1" '{"latest":"2.0.0"}' 0 1.0.2 "--tag latest-1"
 run "non-latest tag holder missing from stale document still counts" 1.0.2 tag v1.0.2 false ok "1.0.1" '{"latest":"1.0.1","next":"2.0.0"}' 0 1.0.2 "--tag latest-1"
 run "package document 404 with dist-tags aborts" 1.0.2 tag v1.0.2 false docmiss "1.0.1" '{"latest":"2.0.0"}' 1 "" "" "HTTP 404 reading the package document"
+run "package document without time aborts" 1.0.2 tag v1.0.2 false notime "1.0.1" '{"latest":"2.0.0"}' 1 "" "" "unreadable package document"
+run "package document without versions aborts" 1.0.2 tag v1.0.2 false noversions "1.0.1" '{"latest":"2.0.0"}' 1 "" "" "unreadable package document"
 run "200 error object as package document aborts" 1.0.2 tag v1.0.2 false errdoc "1.0.1" '{"latest":"2.0.0"}' 1 "" "" "unreadable package document"
 run "package document server error aborts" 1.0.2 tag v1.0.2 false doc500 "1.0.1" "$ONE" 1 "" "" "reading the package document"
 run "previously unpublished version aborts" 1.0.2 tag v1.0.2 false unpublished "1.0.1" "$ONE" 1 "" "" "was previously published and unpublished"
