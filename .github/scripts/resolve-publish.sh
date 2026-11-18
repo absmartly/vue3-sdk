@@ -33,7 +33,7 @@ fi
 
 # Registry reads bypass `npm view`: it reads the full package document, which
 # npm's CDN caches for up to 300 s, so a release queued right behind another
-# would see the dist-tags from before it. These two endpoints are not cached.
+# would see the dist-tags from before it. Every read below is uncached.
 REGISTRY=${REGISTRY:-https://registry.npmjs.org}
 PKG_PATH=${PACKAGE/\//%2f}
 BODY=$(mktemp)
@@ -73,10 +73,11 @@ TAGS=$(cat "$BODY")
 TAGS_CODE=$CODE
 
 # The package document lists every version, including ones no dist-tag points
-# to, with deprecations. It may be cached, so it only adds to the dist-tags:
-# any version this workflow published since is still held by an uncached tag.
+# to any more, with deprecations. The CDN caches it for up to 300 s and ignores
+# Cache-Control request headers, so a unique query string forces a fresh copy;
+# HIGHEST and line_top still merge in the dist-tags as a second source.
 DOC=$(mktemp)
-CODE=$(get "${PKG_PATH}")
+CODE=$(get "${PKG_PATH}?_=$(date +%s%N)")
 cp "$BODY" "$DOC"
 
 # npm permanently reserves versions that were published and later unpublished;
