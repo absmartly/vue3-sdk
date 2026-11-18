@@ -82,7 +82,7 @@ cp "$BODY" "$DOC"
 # npm permanently reserves versions that were published and later unpublished;
 # the version endpoint is 404 in that case, but the package document's time
 # map retains the publication timestamp.
-if jq -e --arg v "$VERSION" '.time[$v] != null' "$DOC" >/dev/null 2>&1; then
+if jq -e --arg v "$VERSION" '.time[$v] != null and .versions[$v] == null' "$DOC" >/dev/null 2>&1; then
   if [ "$DRY_RUN" = "true" ]; then
     echo "::warning::${PACKAGE}@${VERSION} was previously published and unpublished; a real publish would fail."
   else

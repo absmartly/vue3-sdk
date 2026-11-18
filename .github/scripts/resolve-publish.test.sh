@@ -9,7 +9,7 @@ FAILURES=0
 PKG_URL="https://registry.npmjs.org/@absmartly%2fvue3-sdk"
 TAGS_URL="https://registry.npmjs.org/-/package/@absmartly%2fvue3-sdk/dist-tags"
 
-# run <name> <pkg-version> <ref-type> <ref-name> <dry-run> <mode> <published-versions> <dist-tags-json> <want-rc> <want-version> <want-tag-args> [<want-log-substring>]
+# run <name> <pkg-version> <ref-type> <ref-name> <dry-run> <mode> <published-versions> <dist-tags-json> <want-rc> <want-version> <want-tag-args> [<want-log-substring>] [<unwanted-log-substring>]
 # published-versions: space-separated; a `!` suffix marks a version deprecated.
 # mode: ok (package exists), new (not on npm), fail (network error),
 #       tags500 (dist-tags endpoint errors), ver500 (version lookup errors),
@@ -19,7 +19,7 @@ TAGS_URL="https://registry.npmjs.org/-/package/@absmartly%2fvue3-sdk/dist-tags"
 #       package exists).
 run() {
   local name=$1 version=$2 ref_type=$3 ref_name=$4 dry_run=$5 mode=$6 versions=$7 tags=$8
-  local want_rc=$9 want_version=${10} want_tag=${11} want_log=${12:-}
+  local want_rc=$9 want_version=${10} want_tag=${11} want_log=${12:-} unwanted_log=${13:-}
   local dir
   dir=$(mktemp -d)
   printf '{"version":"%s"}\n' "$version" > "$dir/package.json"
@@ -30,7 +30,7 @@ run() {
     if [ "${v%!}" != "$v" ]; then doc+="\"${v%!}\":{\"deprecated\":\"old\"},"; else doc+="\"$v\":{},"; fi
   done
   printf '%s}}' "${doc%,}" > "$dir/doc.json"
-  if [ "$mode" = unpublished ]; then
+  if [ "$mode" = unpublished ] || [ "$mode" = pubtime ]; then
     jq --arg v "$version" '.time={($v):"2024-01-01T00:00:00.000Z"}' "$dir/doc.json" > "$dir/doc.tmp" && mv "$dir/doc.tmp" "$dir/doc.json"
   fi
   versions=${versions//!/}
@@ -54,7 +54,7 @@ serve() { printf '%s' "\$2" > "\$out"; printf '%s' "\$1"; }
 case "\$url" in
   "$TAGS_URL")
     case "$mode" in
-      ok | ver500 | doc500 | docmiss | badoc) serve 200 "\$(cat "$dir/tags.json")" ;;
+      ok | ver500 | doc500 | docmiss | badoc | unpublished | pubtime) serve 200 "\$(cat "$dir/tags.json")" ;;
       new) serve 401 '"Unauthorized"' ;;
       ghost) serve 404 '"Not Found"' ;;
       ghost401) serve 401 '"Unauthorized"' ;;
@@ -85,9 +85,10 @@ STUB
   got_version=$(sed -n 's/^version=//p' "$dir/out")
   got_tag=$(sed -n 's/^tag_args=//p' "$dir/out")
   if [ "$rc" != "$want_rc" ] || [ "$got_version" != "$want_version" ] || [ "$got_tag" != "$want_tag" ] ||
-    { [ -n "$want_log" ] && ! grep -qF -- "$want_log" "$dir/log"; }; then
+    { [ -n "$want_log" ] && ! grep -qF -- "$want_log" "$dir/log"; } ||
+    { [ -n "$unwanted_log" ] && grep -qF -- "$unwanted_log" "$dir/log"; }; then
     echo "FAIL: $name: rc=$rc version='$got_version' tag_args='$got_tag'" \
-      "(want rc=$want_rc version='$want_version' tag_args='$want_tag' log containing '$want_log')"
+      "(want rc=$want_rc version='$want_version' tag_args='$want_tag' log containing '$want_log' and not '$unwanted_log')"
     sed 's/^/    /' "$dir/log"
     FAILURES=$((FAILURES + 1))
   else
@@ -152,7 +153,9 @@ run "tag holder missing from stale document still counts" 1.0.2 tag v1.0.2 false
 run "non-latest tag holder missing from stale document still counts" 1.0.2 tag v1.0.2 false ok "1.0.1" '{"latest":"1.0.1","next":"2.0.0"}' 0 1.0.2 "--tag latest-1"
 run "stale document 404 after first publish uses dist-tags" 1.0.2 tag v1.0.2 false docmiss "1.0.1" '{"latest":"2.0.0"}' 0 1.0.2 "--tag latest-1"
 run "package document server error aborts" 1.0.2 tag v1.0.2 false doc500 "1.0.1" "$ONE" 1 "" "" "reading the package document"
-run "previously unpublished version aborts" 1.0.2 tag v1.0.2 false unpublished "1.0.1" "$ONE" 1 "" ""
+run "previously unpublished version aborts" 1.0.2 tag v1.0.2 false unpublished "1.0.1" "$ONE" 1 "" "" "was previously published and unpublished"
+run "dry run of previously unpublished version warns" 1.0.2 branch main true unpublished "1.0.1" "$ONE" 0 1.0.2 "" "a real publish would fail"
+run "dry run of published version is not reported as unpublished" 1.0.1 branch main true pubtime "1.0.1" "$ONE" 0 1.0.1 "" "already on npm" "unpublished"
 run "unreadable package document aborts" 1.0.2 tag v1.0.2 false badoc "1.0.1" "$ONE" 1 "" "" "unreadable package document"
 run "version lookup server error aborts" 1.0.2 tag v1.0.2 false ver500 "1.0.1" "$TWO" 1 "" "" "HTTP 500 looking up"
 
