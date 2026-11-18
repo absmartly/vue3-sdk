@@ -164,10 +164,21 @@ if [ -n "$HIGHEST" ] && [ "$HIGHEST" != "$LATEST" ]; then
   echo "Highest version on npm: ${HIGHEST}"
 fi
 
-# Never move a dist-tag backwards. A version below HIGHEST goes to the newest
-# line tag it does not lower: `latest-<major>` (1.4.1 after 2.0.0), else
+# line_top <prefix>: prints the highest stable, non-deprecated version on npm
+# starting with <prefix> (e.g. "1." or "1.2."), or nothing.
+line_top() {
+  jq -r --arg p "$1" '
+    [.versions // {} | to_entries[]
+      | select((.value.deprecated // "") == "" and (.key | test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))
+               and (.key | startswith($p))) | .key]
+    | max_by(split(".") | map(tonumber)) // ""' "$DOC"
+}
+
+# Never move a dist-tag backwards, nor point one below a newer version of its
+# line. A version below HIGHEST goes to the first line tag whose holder and
+# line are not newer: `latest-<major>` (1.4.1 after 2.0.0), else
 # `latest-<major>.<minor>` (1.1.1 after 1.2.0, or 1.2.4 after 2.0.0 when
-# latest-1 is 1.3.0). The tags avoid `v<major>`: npm rejects dist-tags that
+# latest-1 is 1.3.0 or an untagged 1.3.0 exists). The tags avoid `v<major>`: npm rejects dist-tags that
 # are valid semver ranges, and `v1` is one.
 TAG_ARGS=""
 if [ -n "$HIGHEST" ] && below "$HIGHEST"; then
@@ -177,14 +188,20 @@ if [ -n "$HIGHEST" ] && below "$HIGHEST"; then
   fi
   for TAG in "${CANDIDATES[@]}"; do
     HOLDER=$(tag_holder "$TAG")
-    if [ -z "$HOLDER" ] || ! below "$HOLDER"; then
-      TAG_ARGS="--tag ${TAG}"
-      break
+    if [ -n "$HOLDER" ] && below "$HOLDER"; then
+      echo "${TAG} is at ${HOLDER}, newer than ${VERSION}; not moving it back."
+      continue
     fi
-    echo "${TAG} is at ${HOLDER}, newer than ${VERSION}; not moving it back."
+    TOP=$(line_top "${TAG#latest-}.")
+    if [ -n "$TOP" ] && below "$TOP"; then
+      echo "${TAG} line already has ${TOP}, newer than ${VERSION}; not pointing ${TAG} below it."
+      continue
+    fi
+    TAG_ARGS="--tag ${TAG}"
+    break
   done
   if [ -z "$TAG_ARGS" ]; then
-    echo "::error::${VERSION} is older than every dist-tag it could take (latest-${MAJOR}.${MINOR} is $(tag_holder "latest-${MAJOR}.${MINOR}")); publishing it would move a tag backwards."
+    echo "::error::${VERSION} is older than every dist-tag it could take (latest-${MAJOR}.${MINOR} or its line has a newer version); publishing it would point a tag backwards."
     exit 1
   fi
 fi
