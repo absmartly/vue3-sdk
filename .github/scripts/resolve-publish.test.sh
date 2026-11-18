@@ -6,6 +6,7 @@ set -uo pipefail
 
 SCRIPT="$(cd "$(dirname "$0")" && pwd)/resolve-publish.sh"
 FAILURES=0
+KEPT_QUERIES=$(mktemp)
 PKG_URL="https://registry.npmjs.org/@absmartly%2fvue3-sdk"
 TAGS_URL="https://registry.npmjs.org/-/package/@absmartly%2fvue3-sdk/dist-tags"
 
@@ -61,6 +62,7 @@ case "\$url" in
       tags500) serve 500 '"Internal Server Error"' ;;
     esac ;;
   "$PKG_URL"\?_=[0-9]*)
+    echo "\${url#*\?}" >> "$dir/doc-queries"
     case "$mode" in
       new | docmiss) serve 404 '{"error":"Not found"}' ;;
       doc500) serve 500 '{"error":"Internal Server Error"}' ;;
@@ -94,6 +96,7 @@ STUB
   else
     echo "ok: $name"
   fi
+  if [ -n "${KEEP_DIR:-}" ]; then cat "$dir/doc-queries" >> "$KEPT_QUERIES"; fi
   rm -rf "$dir"
 }
 
@@ -151,6 +154,7 @@ run "untagged newer version in minor line fails" 1.0.2 tag v1.0.2 false ok "1.0.
 run "numeric line top 1.10.0 above 1.9.0" 1.9.5 tag v1.9.5 false ok "1.9.0 1.10.0 2.0.0" '{"latest":"2.0.0"}' 0 1.9.5 "--tag latest-1.9"
 run "prerelease line-tag holder is ignored" 1.0.2 tag v1.0.2 false ok "1.0.1 1.6.0-beta.1 2.0.0" '{"latest":"2.0.0","next":"1.6.0-beta.1"}' 0 1.0.2 "--tag latest-1"
 run "same-major prerelease latest gets latest-1.2" 1.2.0 tag v1.2.0 false ok "1.1.0 1.5.0-beta.1" '{"latest":"1.5.0-beta.1"}' 0 1.2.0 "--tag latest-1.2"
+run "prerelease line-tag holder newer is not moved back" 1.4.1 tag v1.4.1 false ok "1.4.0 2.0.0 1.5.0-beta.1" '{"latest":"2.0.0","latest-1":"1.5.0-beta.1"}' 0 1.4.1 "--tag latest-1.4" "latest-1 is at 1.5.0-beta.1"
 run "numeric line compare 1.0.10 above 1.0.9" 1.0.9 tag v1.0.9 false ok "1.0.10 2.0.0" '{"latest":"2.0.0"}' 1 "" "" "not pointing latest-1.0 below it"
 run "line tag holder missing from stale document fails" 1.0.3 tag v1.0.3 false ok "1.0.1 2.0.0" '{"latest":"2.0.0","latest-1":"1.0.5"}' 1 "" "" "would point a tag backwards"
 run "other-tag holder missing from stale document counts for its line" 1.0.3 tag v1.0.3 false ok "1.0.1 2.0.0" '{"latest":"2.0.0","next":"1.6.0"}' 0 1.0.3 "--tag latest-1.0" "not pointing latest-1 below it"
@@ -170,6 +174,17 @@ run "dry run of previously unpublished version warns" 1.0.2 branch main true unp
 run "dry run of published version is not reported as unpublished" 1.0.1 branch main true pubtime "1.0.1" "$ONE" 0 1.0.1 "" "already on npm" "unpublished"
 run "unreadable package document aborts" 1.0.2 tag v1.0.2 false badoc "1.0.1" "$ONE" 1 "" "" "unreadable package document"
 run "version lookup server error aborts" 1.0.2 tag v1.0.2 false ver500 "1.0.1" "$TWO" 1 "" "" "HTTP 500 looking up"
+
+# The package document URL must differ on every run, or the CDN caches it.
+KEEP_DIR=1 run "cache-buster run 1" 1.0.2 tag v1.0.2 false ok "1.0.1" "$ONE" 0 1.0.2 ""
+KEEP_DIR=1 run "cache-buster run 2" 1.0.2 tag v1.0.2 false ok "1.0.1" "$ONE" 0 1.0.2 ""
+if [ "$(sort -u "$KEPT_QUERIES" | wc -l)" -eq 2 ]; then
+  echo "ok: package document query differs between runs"
+else
+  echo "FAIL: package document query repeats between runs: $(tr '\n' ' ' < "$KEPT_QUERIES")"
+  FAILURES=$((FAILURES + 1))
+fi
+rm -f "$KEPT_QUERIES"
 
 if [ "$FAILURES" -ne 0 ]; then
   echo "$FAILURES test(s) failed"
