@@ -11,7 +11,8 @@ TAGS_URL="https://registry.npmjs.org/-/package/@absmartly%2fvue3-sdk/dist-tags"
 
 # run <name> <pkg-version> <ref-type> <ref-name> <dry-run> <mode> <published-versions> <dist-tags-json> <want-rc> <want-version> <want-tag-args>
 # mode: ok (package exists), new (not on npm), fail (network error),
-#       tags500 (dist-tags endpoint errors), ghost (no dist-tags but package exists).
+#       tags500 (dist-tags endpoint errors), ver500 (version lookup errors),
+#       ghost / ghost401 (dist-tags 404 / 401 but package exists).
 run() {
   local name=$1 version=$2 ref_type=$3 ref_name=$4 dry_run=$5 mode=$6 versions=$7 tags=$8
   local want_rc=$9 want_version=${10} want_tag=${11}
@@ -40,12 +41,14 @@ case "\$url" in
       ok) serve 200 "\$(cat "$dir/tags.json")" ;;
       new) serve 401 '"Unauthorized"' ;;
       ghost) serve 404 '"Not Found"' ;;
+      ghost401) serve 401 '"Unauthorized"' ;;
       tags500) serve 500 '"Internal Server Error"' ;;
     esac ;;
   "$PKG_URL")
     if [ "$mode" = new ]; then serve 404 '{"error":"Not found"}'; else serve 200 '{}'; fi ;;
   "$PKG_URL"/*)
     v=\${url##*/}
+    if [ "$mode" = ver500 ]; then serve 500 '"Internal Server Error"'; exit 0; fi
     if [ "$mode" != new ] && [[ " $versions " == *" \$v "* ]]; then serve 200 '{}'; else serve 404 '"version not found"'; fi ;;
   *) echo "unexpected curl URL: \$url" >&2; exit 99 ;;
 esac
@@ -114,6 +117,8 @@ run "first publish" 1.0.0 tag v1.0.0 false new "" "" 0 1.0.0 ""
 run "network failure aborts" 1.0.2 tag v1.0.2 false fail "" "" 1 "" ""
 run "dist-tags server error aborts" 1.0.2 tag v1.0.2 false tags500 "1.0.1" "" 1 "" ""
 run "missing dist-tags on existing package aborts" 1.0.2 tag v1.0.2 false ghost "1.0.1" "" 1 "" ""
+run "401 dist-tags on existing package aborts" 1.0.2 tag v1.0.2 false ghost401 "1.0.1" "" 1 "" ""
+run "version lookup server error aborts" 1.0.2 tag v1.0.2 false ver500 "1.0.1" "$TWO" 1 "" ""
 
 if [ "$FAILURES" -ne 0 ]; then
   echo "$FAILURES test(s) failed"
